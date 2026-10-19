@@ -2,6 +2,9 @@
 
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
+See [final release checks](release.md) for the minimum/current runtime matrix, clean
+consumer installs, package metadata checks, and fixes from the final review.
+
 The [Python and TypeScript comparison](sdk-parity.md) records the latest cross-SDK
 alignment, matching endpoints, workflow recovery and official-link checks. Offline
 evidence below was refreshed after alignment; paid live evidence comes from the earlier
@@ -38,9 +41,9 @@ formats are not exposed as invented FlashData APIs.
 
 ## Verification
 
-Validated locally on Windows with Python 3.12.14:
+Validated locally on Windows with Python 3.10.22 and 3.12.14:
 
-- **307 offline tests:** both clients, all 15 source request contracts, background/batch,
+- **317 offline tests:** both clients, all 15 source request contracts, background/batch,
   bulk lifecycle and controls, signed redirects, credential separation, bounded parsing,
   local HTTP integration, nested typing, and failure recovery.
 - **40 documentation Python blocks executed**, rather than only parsed; every relative
@@ -68,7 +71,6 @@ Bulk pause/resume transitions are covered offline, not by a timing-dependent liv
 Callback receipt/delivery is not exercised against an external webhook server.
 
 CI is configured for Linux/Windows on Python 3.10, 3.12 and 3.14; the GitHub matrix has
-not run while the repository remains local. Python 3.10 grammar is checked locally, but
-only Python 3.12 has been executed here. GitHub, PyPI and hosted documentation publication
-remain pending the official FlashData accounts. The TypeScript SDK was not changed in
-this Python-focused review.
+not run while the repository remains local. Full local checks now pass on Python
+3.10.22 and 3.12.14; Linux and Python 3.14 remain unverified. GitHub, PyPI and hosted
+documentation publication remain pending the official FlashData accounts.

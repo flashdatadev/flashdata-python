@@ -386,7 +386,10 @@ def test_invalid_client_configuration(kwargs):
 
 
 @pytest.mark.live
-@pytest.mark.skipif(not os.getenv("FLASHDATA_LIVE_API_KEY"), reason="Explicit live account key is not configured")
+@pytest.mark.skipif(
+    os.getenv("FLASHDATA_RUN_LIVE") != "1" or not os.getenv("FLASHDATA_LIVE_API_KEY"),
+    reason="Set FLASHDATA_RUN_LIVE=1 and FLASHDATA_LIVE_API_KEY to enable live requests",
+)
 def test_live_free_account_access():
     with FlashData(api_key=os.environ["FLASHDATA_LIVE_API_KEY"]) as client:
         assert isinstance(client.account.access()["sources"], list)

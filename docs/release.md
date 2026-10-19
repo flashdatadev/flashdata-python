@@ -2,6 +2,38 @@
 
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
+## Final local release check — 2026-10-20
+
+The 0.1.0 release candidate passes the local release checks below. English `README.md`
+remains the default, with a visible 简体中文 link to the complete Chinese README.
+
+| Check | Result |
+| --- | --- |
+| Supported runtimes exercised | Windows: Python 3.10.22 and 3.12.14 |
+| Offline tests | 317 passed on each runtime; 20 live checks deliberately skipped |
+| Documentation examples | All 40 Python blocks execute, including six Chinese README examples |
+| Example CLIs | All 25 checked for import safety, help, outputs and applicable recovery flows |
+| Formatting and typing | Ruff and mypy pass |
+| Generated documentation | Sphinx builds with warnings treated as errors on both runtimes |
+| Packages | Wheel and source archive build; clean installs pass sync/async, mypy and offline-example checks |
+| Package metadata | Runtime/distribution versions agree; both source-archive READMEs match the checkout |
+| Documentation navigation | Exact-case relative links pass; 18 distinct official URLs return HTTP 200 |
+| API parity | Both SDKs agree on 24 operations, 15 sources and 46 resource methods |
+| Credential checks | Package contents and Git history have no FlashData-key-shaped matches |
+
+This check fixed control-character validation in both Python clients, made every live
+test require explicit opt-in, and removed hard-coded package versions from the verifier.
+The TypeScript consumer check now installs its own compiler and Node typings. Its
+English and Chinese setup instructions explain those application dependencies.
+
+No paid requests were repeated for this release check; earlier integration evidence is
+recorded in [validation](validation.md). Successful customer cloud writes, external
+webhook delivery, live pause/resume transitions, Linux and Python 3.14 still require
+their respective integration or CI runs. No repository, package or documentation site
+was published. Official owner URLs and package-name ownership must be set before release.
+
+## Before publication
+
 This repository is local. Before publication, create the official FlashData GitHub
 account, choose the repository owner and verify package-name availability/ownership.
 The planned Python distribution name is `flashdata` on PyPI; verify ownership before
@@ -17,7 +49,8 @@ publishing. No registry has been changed by this work.
 
 ```sh
 python -m pytest
-python -m ruff check src tests examples
+python -m ruff check src tests examples scripts docs/conf.py
+python -m ruff format --check src tests examples scripts docs/conf.py
 python -m mypy src/flashdata
 python -m sphinx -n -W --keep-going -b html docs docs/_build/html
 python -m build

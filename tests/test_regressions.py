@@ -22,6 +22,14 @@ from flashdata._common import result_rows
 from flashdata.types import ApiAccess, YoutubeDownloadParams, YouTubeSearchFilters
 
 
+@pytest.mark.parametrize("kind", [FlashData, AsyncFlashData])
+@pytest.mark.parametrize("key", ["bad\tkey", "bad\x00key", "bad\x7fkey", "bad\nkey", "bad\u4e2dkey"])
+def test_api_key_control_characters_reject_before_transport_creation(kind, key):
+    with pytest.raises(ValidationError) as error:
+        kind(api_key=key)
+    assert key not in str(error.value)
+
+
 async def call(method, *args, **kwargs):
     value = method(*args, **kwargs)
     return await value if inspect.isawaitable(value) else value

@@ -250,7 +250,8 @@ python examples/async_query.py "python tutorial" --output artifacts/result.json
 ```sh
 python -m pip install -e ".[dev,docs]"
 python -m pytest
-python -m ruff check src tests examples docs/conf.py
+python -m ruff check src tests examples scripts docs/conf.py
+python -m ruff format --check src tests examples scripts docs/conf.py
 python -m mypy src/flashdata
 python -m sphinx -n -W --keep-going -b html docs docs/_build/html
 python -m build

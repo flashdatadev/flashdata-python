@@ -15,7 +15,7 @@ keywords = ["flashdata", "google-search", "youtube", "transcripts", "sdk", "asyn
 classifiers = ["Programming Language :: Python :: 3", "Typing :: Typed", "Topic :: Software Development :: Libraries :: Python Modules"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "build>=1,<2", "ruff>=0.12,<1", "mypy>=1.15,<3", "types-jsonschema"]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "build>=1,<2", "ruff>=0.12,<1", "mypy>=1.15,<3", "types-jsonschema", "tomli>=2; python_version < '3.11'"]
 docs = ["sphinx>=7,<9", "myst-parser>=3,<5", "sphinx-rtd-theme>=2,<4"]
 
 [project.urls]

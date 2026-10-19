@@ -1,5 +1,7 @@
 """Build local distributions and verify a clean installed-wheel consumer. Never publish."""
 
+import ast
+from email.parser import BytesParser
 import json
 import os
 from pathlib import Path
@@ -11,6 +13,11 @@ import tarfile
 import tempfile
 import venv
 import zipfile
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV = {
@@ -29,13 +36,26 @@ def run(args, cwd=ROOT):
 
 
 def main():
+    with (ROOT / "pyproject.toml").open("rb") as file:
+        project = tomllib.load(file)["project"]
+    version = project["version"]
+    module = ast.parse((ROOT / "src/flashdata/__init__.py").read_text(encoding="utf-8"))
+    runtime_version = next(
+        node.value
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets)
+    )
+    assert ast.literal_eval(runtime_version) == version, "Runtime and distribution versions must match"
     run([sys.executable, "-m", "build"])
     contracts = json.loads((ROOT / "source-contract.json").read_text())
     assert len(contracts) == 15
-    wheel = ROOT / "dist/flashdata-0.1.0-py3-none-any.whl"
-    source = ROOT / "dist/flashdata-0.1.0.tar.gz"
+    wheel = ROOT / f"dist/flashdata-{version}-py3-none-any.whl"
+    source = ROOT / f"dist/flashdata-{version}.tar.gz"
     with zipfile.ZipFile(wheel) as archive:
         names = archive.namelist()
+        metadata = BytesParser().parsebytes(archive.read(f"flashdata-{version}.dist-info/METADATA"))
+        assert metadata["Name"] == project["name"] and metadata["Version"] == version
         assert "flashdata/py.typed" in names and "flashdata/_schemas.json" in names
         for name in names:
             assert not re.search(rb"fd_[a-z0-9_-]{35,}", archive.read(name), re.I), name
@@ -44,6 +64,9 @@ def main():
         assert "examples/bulk_download.py" in names and "docs/sdk-parity.md" in names
         assert "README.zh-CN.md" in names
         assert "scripts/verify_package.py" in names
+        for readme in ["README.md", "README.zh-CN.md"]:
+            member = archive.getmember(f"flashdata-{version}/{readme}")
+            assert archive.extractfile(member).read() == (ROOT / readme).read_bytes(), readme
         for member in archive.getmembers():
             name = member.name.split("/", 1)[-1]
             assert not any(

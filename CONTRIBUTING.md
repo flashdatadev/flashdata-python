@@ -12,7 +12,8 @@ python -m venv .venv
 # Activate .venv, then:
 python -m pip install -e '.[dev,docs]'
 python -m pytest
-python -m ruff check src tests examples
+python -m ruff check src tests examples scripts docs/conf.py
+python -m ruff format --check src tests examples scripts docs/conf.py
 python -m mypy src/flashdata
 python -m sphinx -n -W --keep-going -b html docs docs/_build/html
 python -m build

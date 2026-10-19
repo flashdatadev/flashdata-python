@@ -36,8 +36,8 @@ class AsyncFlashData:
         trust_env: bool = True,
     ):
         key = api_key if api_key is not None else os.environ.get("FLASHDATA_API_KEY", "")
-        if not isinstance(key, str) or not key.isascii() or any(c in key for c in "\r\n"):
-            raise ValidationError("api_key must be a string without line breaks.")
+        if not isinstance(key, str) or any(not "\x20" <= char <= "\x7e" for char in key):
+            raise ValidationError("api_key must be an ASCII string without control characters.")
         self._key = key.strip()
         self._result_origin: str | None = None
         self.data_url, self.management_url = origin(data_url), origin(management_url)

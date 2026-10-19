@@ -2,6 +2,10 @@
 
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
+Final local release check: verified Python 3.10/3.12, rejected API-key control characters
+before transport creation, required explicit live-test opt-in, and checked dynamic
+distribution versions and packaged English/Chinese README contents.
+
 Cross-SDK review: aligned request/bulk typing and stored-result envelopes, added public
 discovery and bulk download CLIs, saved bulk job records, preserved concurrent partial
 results, validated waiting arguments before submission, fixed initial cursor loops,

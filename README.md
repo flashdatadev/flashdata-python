@@ -39,6 +39,9 @@ Obtain an API key from your [FlashData account](https://flashdata.dev) and pass 
 the client's `api_key` argument. The examples below use `os.getenv("FLASHDATA_API_KEY")`
 to read the key from your environment. You can also pass a key supplied by your secret manager.
 
+The SDK does not automatically load `.env` files. Load application configuration before
+calling `os.getenv` if you use them.
+
 ```sh
 # macOS / Linux
 export FLASHDATA_API_KEY="YOUR_API_KEY"
@@ -257,7 +260,8 @@ differences, workflow guarantees, and verification limits side by side.
 ```sh
 python -m pip install -e ".[dev,docs]"
 python -m pytest
-python -m ruff check src tests examples docs/conf.py
+python -m ruff check src tests examples scripts docs/conf.py
+python -m ruff format --check src tests examples scripts docs/conf.py
 python -m mypy src/flashdata
 python -m sphinx -n -W --keep-going -b html docs docs/_build/html
 python -m build
