@@ -13,6 +13,7 @@ EXAMPLES = json.loads((ROOT / "tests/fixtures/source-examples.json").read_text()
 SCRIPTS = sorted(p for p in (ROOT / "examples").glob("*.py") if not p.name.startswith("_"))
 PAGES = [
     ROOT / "README.md",
+    ROOT / "README.zh-CN.md",
     ROOT / "CONTRIBUTING.md",
     ROOT / "examples/README.md",
     *(p for p in ROOT.glob("docs/**/*.md") if "_build" not in p.parts),

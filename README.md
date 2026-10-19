@@ -1,5 +1,7 @@
 # FlashData Python SDK
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
 Google search results and YouTube data for Python applications, research pipelines,

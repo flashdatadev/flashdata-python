@@ -42,6 +42,7 @@ def main():
     with tarfile.open(source) as archive:
         names = [member.name.split("/", 1)[-1] for member in archive.getmembers()]
         assert "examples/bulk_download.py" in names and "docs/sdk-parity.md" in names
+        assert "README.zh-CN.md" in names
         assert "scripts/verify_package.py" in names
         for member in archive.getmembers():
             name = member.name.split("/", 1)[-1]
