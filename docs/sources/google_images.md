@@ -5,9 +5,10 @@ Discover visual assets and their source pages. `imageUrl` is the image resource,
 ## Example
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     response = client.google.images("coffee beans", num=5, gl="us", hl="en")
     for payload in response["results"]:
         for item in payload.get("images", []):

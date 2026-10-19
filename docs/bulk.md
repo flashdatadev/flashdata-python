@@ -11,11 +11,12 @@ Create a local `video-ids.txt` file containing, for example, `dQw4w9WgXcQ` on on
 Then run:
 
 ```python
+import os
 import json
 from pathlib import Path
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     receipt = client.bulk.create({"source": "youtube_metadata",
                                   "options": {"include_formats": False}})
     bulk_id = receipt["job"]["id"]

@@ -17,8 +17,9 @@ the package's runtime dependencies. Source installation is supported before the 
 
 ## Authenticate
 
-Get an API key from your [FlashData account](https://flashdata.dev). Set
-`FLASHDATA_API_KEY` in your process environment; no credentials belong in source files.
+Get an API key from your [FlashData account](https://flashdata.dev) and pass it as
+`api_key` when creating a client. The examples use `os.getenv("FLASHDATA_API_KEY")`
+to read it from your process environment:
 
 ```sh
 export FLASHDATA_API_KEY="YOUR_API_KEY"
@@ -28,16 +29,18 @@ export FLASHDATA_API_KEY="YOUR_API_KEY"
 $env:FLASHDATA_API_KEY = "YOUR_API_KEY"
 ```
 
-Both clients read this variable by default. You can instead pass `api_key` from your
-secret manager. Empty keys are allowed for `client.public` discovery; authenticated
-methods reject a missing key before sending any request.
+`api_key` accepts a string, whether read from the environment or supplied by your secret
+manager. Authentication works the same way with `FlashData` and `AsyncFlashData`.
+For optional automatic environment lookup and `.env` configuration, see
+[client configuration](client.md#api-keys).
 
 ## Make a request
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     response = client.google.search("coffee", num=5)
     print("Charged credits:", response["usage"]["credits"])
     for payload in response["results"]:

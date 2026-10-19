@@ -1,6 +1,7 @@
 """Enrich a video ID with title, duration, channel, and available caption languages."""
 
 from argparse import ArgumentParser
+import os
 from flashdata import FlashData
 from _support import add_output, report_usage, run, save_json
 
@@ -12,7 +13,7 @@ def main(argv=None):
     parser.add_argument("--include-chapters", action="store_true")
     add_output(parser)
     args = parser.parse_args(argv)
-    with FlashData() as client:
+    with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
         response = client.youtube.metadata(
             args.video_id, include_formats=args.include_formats, include_chapters=args.include_chapters
         )

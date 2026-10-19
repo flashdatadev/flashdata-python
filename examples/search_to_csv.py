@@ -1,6 +1,7 @@
 """Export deduplicated Google web results to CSV, with an explicit page budget."""
 
 from argparse import ArgumentParser
+import os
 import csv
 from pathlib import Path
 from flashdata import FlashData
@@ -17,7 +18,10 @@ def main(argv=None):
     args.output.parent.mkdir(parents=True, exist_ok=True)
     seen = set()
     credits = 0
-    with FlashData() as client, args.output.open("w", encoding="utf-8", newline="") as output:
+    with (
+        FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client,
+        args.output.open("w", encoding="utf-8", newline="") as output,
+    ):
         writer = csv.DictWriter(output, fieldnames=["page", "position", "title", "link", "snippet"])
         writer.writeheader()
         for page, response in enumerate(

@@ -1,6 +1,7 @@
 """Create a metadata bulk job or resume its ID, then export bounded result parts."""
 
 from argparse import ArgumentParser
+import os
 import json
 from pathlib import Path
 from flashdata import FlashData
@@ -16,7 +17,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not args.bulk_id and (not args.input or not args.input.is_file()):
         parser.error("provide an ID file or --bulk-id")
-    with FlashData() as client:
+    with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
         bulk_id = args.bulk_id
         if not bulk_id:
             receipt = client.bulk.create({"source": "youtube_metadata", "options": {"include_formats": False}})

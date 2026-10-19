@@ -1,6 +1,7 @@
 """Discover YouTube videos and print titles, channels, and watch links."""
 
 from argparse import ArgumentParser
+import os
 from flashdata import FlashData
 from _support import add_output, report_usage, run, save_json
 
@@ -15,7 +16,7 @@ def main(argv=None):
     filters = {"type": "video"}
     if args.short:
         filters["duration"] = "<4"
-    with FlashData() as client:
+    with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
         response = client.youtube.search(args.query, max_results=args.max_results, filters=filters)
     for payload in response["results"]:
         for video in payload.get("results", []):

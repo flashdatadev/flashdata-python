@@ -2,6 +2,8 @@
 
 ## 0.1.0 — local release candidate
 
+- Document explicit `api_key=os.getenv("FLASHDATA_API_KEY")` initialization consistently
+  across the README, guides, and authenticated CLI examples.
 - Reworked the README and all source guides around executable tasks and actual response fields.
 - Added a Sphinx documentation site, CLI inputs, JSON/CSV/NDJSON exports, and resumable workflows.
 - Added per-request timeouts, proxy/TLS configuration, unauthenticated public discovery,

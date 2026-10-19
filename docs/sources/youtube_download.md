@@ -11,7 +11,7 @@ from pathlib import Path
 from flashdata import FlashData
 
 storage = json.loads(Path(os.environ["FLASHDATA_STORAGE_FILE"]).read_text(encoding="utf-8"))
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     receipt = client.youtube.download("dQw4w9WgXcQ", storage=storage,
                                       video_quality="<=720", output_format="mp4")
     print("Save this ID:", receipt["id"], flush=True)

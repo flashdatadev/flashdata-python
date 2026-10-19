@@ -115,6 +115,7 @@ def example_api(monkeypatch, tmp_path):
     storage = tmp_path / "private-storage.json"
     storage.write_text(json.dumps(FIXTURES["youtube_download"]["request"]["params"]["storage"]))
     monkeypatch.setenv("FLASHDATA_STORAGE_FILE", str(storage))
+    monkeypatch.setenv("FLASHDATA_API_KEY", "example-test-key")
     yield calls
     for client in clients:
         if isinstance(client, FlashData):

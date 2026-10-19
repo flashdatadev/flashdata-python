@@ -3,9 +3,10 @@
 ## Submit, save, wait, retrieve
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     receipt = client.youtube.metadata("dQw4w9WgXcQ", mode="async", include_formats=False)
     job_id = receipt["id"]
     print(job_id, flush=True)
@@ -30,9 +31,10 @@ service's 24-hour retention window. 409 means not ready; 410 means expired.
 ## Submit a mixed batch
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     batch = client.queries.batch([
         {"source": "google_search", "query": "coffee", "params": {"num": 3}},
         {"source": "youtube_metadata", "video_id": "dQw4w9WgXcQ",

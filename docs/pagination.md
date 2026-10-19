@@ -5,9 +5,10 @@ dictionaries lazily, stops on an empty hit list, and makes no request for pages 
 not consume. Every fetched page is a separate paid query, including the empty final page.
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     for response in client.google.pages("google_search", "coffee", max_pages=2, num=5):
         for payload in response["results"]:
             for hit in payload.get("organic", []):

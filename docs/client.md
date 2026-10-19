@@ -1,11 +1,33 @@
 # Client configuration and asyncio
 
+## API keys
+
+Pass your key explicitly when constructing either client:
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    print(client.account.access()["sources"])
+```
+
+Here, `os.getenv` is application code that reads an environment variable and passes its
+value as `api_key`. You can also pass a string obtained from your secret manager.
+As a convenience, omitting `api_key` or passing `None` makes the SDK look up
+`FLASHDATA_API_KEY` itself. An explicit string takes precedence over that lookup.
+
+The SDK does not load `.env` files. If your application uses one, load it before calling
+`os.getenv`, for example with your application's existing configuration loader.
+Public discovery needs no key; authenticated methods reject a missing key before I/O.
+
 ## Reuse and close clients
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData(timeout=120, max_response_bytes=64 * 1024 * 1024) as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY"), timeout=120, max_response_bytes=64 * 1024 * 1024) as client:
     first = client.google.search("coffee", timeout=30)
     second = client.google.news("coffee", timeout=60)
 ```
@@ -28,11 +50,12 @@ event loops. Canceling a coroutine does not cancel an accepted server job.
 ## Async requests
 
 ```python
+import os
 import asyncio
 from flashdata import AsyncFlashData
 
 async def main():
-    async with AsyncFlashData() as client:
+    async with AsyncFlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
         gate = asyncio.Semaphore(3)
 
         async def search(query):

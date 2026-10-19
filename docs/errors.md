@@ -19,9 +19,10 @@ recover and let unexpected failures reach your application's error reporting.
 ## HTTP errors
 
 ```python
+import os
 from flashdata import APIError, FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     try:
         client.youtube.captions("dQw4w9WgXcQ", language="en", auto=False)
     except APIError as error:

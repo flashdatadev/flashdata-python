@@ -5,9 +5,10 @@ they still have rate limits. Account credit balances and plan ceilings are share
 the account's API keys; usage reads are scoped to the key used for the request.
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     access = client.account.access()
     balance = client.account.balance()
     prices = client.account.pricing(source="youtube_metadata", request_count=100)

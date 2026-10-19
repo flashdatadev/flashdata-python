@@ -1,9 +1,10 @@
 # Runnable examples
 
-Install from the repository root with `python -m pip install .`. Set `FLASHDATA_API_KEY`
-in your environment. Live examples consume credits; `account.py` uses free account reads
-and `offline.py` uses a mock transport. Use `--help` to see arguments without making a request.
-The SDK does not load `.env` files automatically.
+Install from the repository root with `python -m pip install .`. Each live example passes
+`api_key=os.getenv("FLASHDATA_API_KEY")` to its client, so set `FLASHDATA_API_KEY` in your
+environment before running it. Live examples consume credits; `account.py` uses free account
+reads and `offline.py` uses a mock transport. Use `--help` to see arguments without making
+a request. If you use a `.env` file, load it in your application before reading the variable.
 
 Every script has a `main` guard, accepts command-line inputs, and returns a nonzero exit
 status on failure. Most support `--output artifacts/name.json` to save the complete response

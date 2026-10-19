@@ -5,9 +5,10 @@ Track coverage with headline `title`, publisher `source`, `link`, and `date`. Da
 ## Example
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     response = client.google.news("renewable energy", num=5, gl="us", hl="en")
     for payload in response["results"]:
         for item in payload.get("news", []):

@@ -5,9 +5,10 @@ Build retrieval inputs or monitor search listings. Each organic hit may include 
 ## Example
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     response = client.google.search("coffee roasters", num=5, gl="us", hl="en")
     for payload in response["results"]:
         for item in payload.get("organic", []):

@@ -1,6 +1,7 @@
 """Search several queries with bounded asyncio concurrency and one reusable client."""
 
 from argparse import ArgumentParser
+import os
 import asyncio
 from flashdata import AsyncFlashData
 from _support import add_output, run, save_json
@@ -8,7 +9,7 @@ from _support import add_output, run, save_json
 
 async def search_all(queries, concurrency):
     gate = asyncio.Semaphore(concurrency)
-    async with AsyncFlashData() as client:
+    async with AsyncFlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 
         async def search(query):
             async with gate:

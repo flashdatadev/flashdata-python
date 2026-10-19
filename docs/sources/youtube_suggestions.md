@@ -5,9 +5,10 @@ Expand query ideas using autocomplete. Each item of the outer `results` array is
 ## Example
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     response = client.youtube.suggestions("python", language="en", region="US")
     for suggestions in response["results"]:
         for suggestion in suggestions:

@@ -5,9 +5,10 @@ Discover videos or other entity types. Search payloads contain a nested `results
 ## Example
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData() as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     response = client.youtube.search("python tutorial", max_results=5)
     for payload in response["results"]:
         for item in payload.get("results", []):
