@@ -33,10 +33,10 @@ formats are not exposed as invented FlashData APIs.
 
 Validated locally on Windows with Python 3.12.14:
 
-- **279 offline tests:** both clients, all 15 source request contracts, background/batch,
+- **280 offline tests:** both clients, all 15 source request contracts, background/batch,
   bulk lifecycle and controls, signed redirects, credential separation, bounded parsing,
   local HTTP integration, nested typing, and failure recovery.
-- **32 documentation Python blocks executed**, rather than only parsed; every relative
+- **33 documentation Python blocks executed**, rather than only parsed; every relative
   documentation link and every source's parameter coverage is checked.
 - **23 example scripts checked** for import safety, help without a key, and execution
   with source-shaped test responses, including JSON/CSV/NDJSON exports and resume paths.

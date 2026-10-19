@@ -108,6 +108,69 @@ Save the ID before waiting so the same job can be resumed after a process restar
 Use [batch submission](docs/jobs.md) for mixed queries and [bulk jobs](docs/bulk.md)
 for UTF-8 files containing one YouTube video ID per line.
 
+## Download YouTube videos in bulk
+
+Create `video-ids.txt` with one video ID per line:
+
+```text
+dQw4w9WgXcQ
+jNQXAC9IVRw
+```
+
+Create `private-storage.json` with your destination configuration. For example, for S3:
+
+```json
+{
+  "storage_type": "s3",
+  "storage_url": "your-media-bucket",
+  "region": "us-east-1",
+  "object_prefix": "youtube",
+  "access_key": "YOUR_ACCESS_KEY",
+  "secret_key": "YOUR_SECRET_KEY"
+}
+```
+
+Then create the bulk download task, upload the ID file, and start processing:
+
+```python
+import json
+import os
+from pathlib import Path
+from flashdata import FlashData
+
+storage = json.loads(Path("private-storage.json").read_text(encoding="utf-8"))
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    receipt = client.bulk.create({
+        "source": "youtube_download",
+        "options": {
+            "download_type": "audio_video",
+            "video_quality": "<=720",
+            "output_format": "mp4",
+            "storage": storage,
+        },
+    })
+    bulk_id = receipt["job"]["id"]
+    print("Save this bulk ID:", bulk_id, flush=True)
+    client.bulk.upload_file(receipt, Path("video-ids.txt"))
+    client.bulk.start(bulk_id)
+
+    completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
+    print("Counts:", completed["counts"])
+    for row in client.bulk.rows(bulk_id):
+        print(row["video_id"], row["status"])
+```
+
+Media files are delivered to your configured bucket. `bulk.rows()` reads the task's
+JSON result records, including each video's status and source output in `results`.
+Check the final counts and row statuses: a completed task can contain failed items.
+Downloads are billed by actual delivered bytes; your storage provider may charge separately.
+
+After a process restart or polling timeout, use the saved ID with `client.bulk.get()`,
+`client.bulk.wait()`, and `client.bulk.rows()` to continue reading the existing task.
+See [bulk controls and recovery](docs/bulk.md), [download options](docs/sources/youtube_download.md),
+and [all supported storage providers](docs/storage.md).
+
 ## Handle failures
 
 ```python
