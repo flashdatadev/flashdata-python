@@ -119,7 +119,7 @@ def test_contract_snapshot_has_all_developer_operations():
 
 def test_public_typing_rejects_invalid_nested_inputs(tmp_path):
     code = """from flashdata import FlashData
-c = FlashData("offline")
+c = FlashData(api_key="offline")
 result = c.google.search("coffee", num=3, timeout=30)
 reveal_type(result)
 c.youtube.search("coffee", filters={"sort_by": "wrong"})

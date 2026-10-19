@@ -19,7 +19,7 @@ def main(argv=None):
             },
         )
 
-    with FlashData("offline-demo-key", transport=httpx.MockTransport(respond)) as client:
+    with FlashData(api_key="offline-demo-key", transport=httpx.MockTransport(respond)) as client:
         response = client.google.search("FlashData SDK", num=1)
         for hit in response["results"][0]["organic"]:
             print(hit["title"], hit["link"])

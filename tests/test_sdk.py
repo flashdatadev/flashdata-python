@@ -46,7 +46,9 @@ async def client_factory(request):
                 return handler(req)
             return httpx.Response(200, json={"ok": True})
 
-        client = (AsyncFlashData if request.param else FlashData)(KEY, transport=httpx.MockTransport(handle), **options)
+        client = (AsyncFlashData if request.param else FlashData)(
+            api_key=KEY, transport=httpx.MockTransport(handle), **options
+        )
         clients.append(client)
         return client, calls
 
@@ -380,11 +382,11 @@ async def test_missing_redirect_is_a_protocol_error(client_factory):
 )
 def test_invalid_client_configuration(kwargs):
     with pytest.raises(ValidationError):
-        FlashData(KEY, **kwargs)
+        FlashData(api_key=KEY, **kwargs)
 
 
 @pytest.mark.live
 @pytest.mark.skipif(not os.getenv("FLASHDATA_LIVE_API_KEY"), reason="Explicit live account key is not configured")
 def test_live_free_account_access():
-    with FlashData(os.environ["FLASHDATA_LIVE_API_KEY"]) as client:
+    with FlashData(api_key=os.environ["FLASHDATA_LIVE_API_KEY"]) as client:
         assert isinstance(client.account.access()["sources"], list)

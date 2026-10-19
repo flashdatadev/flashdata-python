@@ -32,7 +32,7 @@ async def api(request):
     created = []
 
     def factory(handler, **options):
-        client = request.param("test-key", transport=httpx.MockTransport(handler), **options)
+        client = request.param(api_key="test-key", transport=httpx.MockTransport(handler), **options)
         created.append(client)
         return client
 
@@ -228,7 +228,7 @@ async def test_public_discovery_without_credentials(kind, monkeypatch):
         assert "x-api-key" not in request.headers
         return httpx.Response(200, json={"status": "ok"})
 
-    client = kind(transport=httpx.MockTransport(handle))
+    client = kind(api_key=None, transport=httpx.MockTransport(handle))
     try:
         await call(client.public.health)
         with pytest.raises(ValidationError):

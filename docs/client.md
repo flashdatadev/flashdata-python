@@ -74,9 +74,10 @@ do not report currently available worker slots. Avoid unbounded task creation.
 ## Proxies, TLS and environments
 
 ```python
+import os
 from flashdata import FlashData
 
-with FlashData(proxy="http://localhost:8080", trust_env=False) as client:
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY"), proxy="http://localhost:8080", trust_env=False) as client:
     print(client.public.health())
 ```
 

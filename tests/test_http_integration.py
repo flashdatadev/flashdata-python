@@ -69,7 +69,9 @@ async def test_real_http_origins_redirect_and_streamed_upload(async_mode, tmp_pa
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in (storage, server)]
     for thread in threads:
         thread.start()
-    client = (AsyncFlashData if async_mode else FlashData)("local-http-key", data_url=api_url, management_url=api_url)
+    client = (AsyncFlashData if async_mode else FlashData)(
+        api_key="local-http-key", data_url=api_url, management_url=api_url
+    )
 
     async def invoke(method, *args, **kwargs):
         result = method(*args, **kwargs)

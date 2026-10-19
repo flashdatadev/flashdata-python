@@ -101,9 +101,8 @@ def example_api(monkeypatch, tmp_path):
         # Test proxy documentation without opening any proxy connection.
         kwargs.pop("proxy", None)
         kwargs["transport"] = httpx.MockTransport(handle)
-        if not args and "api_key" not in kwargs:
-            kwargs["api_key"] = "example-test-key"
-        client = (AsyncFlashData if async_ else FlashData)(*args, **kwargs)
+        key = args[0] if args else kwargs.pop("api_key", "example-test-key")
+        client = (AsyncFlashData if async_ else FlashData)(api_key=key, **kwargs)
         clients.append(client)
         return client
 

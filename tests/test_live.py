@@ -21,7 +21,7 @@ DATA_SOURCES = [s for s in EXAMPLES if s != "youtube_download"]
 
 @pytest.fixture
 def live_client():
-    with FlashData(os.environ["FLASHDATA_LIVE_API_KEY"], timeout=180) as client:
+    with FlashData(api_key=os.environ["FLASHDATA_LIVE_API_KEY"], timeout=180) as client:
         yield client
 
 
@@ -80,7 +80,7 @@ def test_bulk_upload_export_and_draft_controls(live_client, tmp_path):
 
 
 async def test_async_client(live_client):
-    async with AsyncFlashData(os.environ["FLASHDATA_LIVE_API_KEY"], timeout=180) as client:
+    async with AsyncFlashData(api_key=os.environ["FLASHDATA_LIVE_API_KEY"], timeout=180) as client:
         response = await client.youtube.metadata("dQw4w9WgXcQ", include_formats=False, timeout=180)
         assert response["results"][0]["videoId"] == "dQw4w9WgXcQ"
         jobs = [j async for j in client.bulk.iter_jobs(max_pages=1, limit=1)]
