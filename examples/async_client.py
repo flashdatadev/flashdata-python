@@ -8,14 +8,29 @@ from _support import add_output, run, save_json
 
 
 async def search_all(queries, concurrency):
-    gate = asyncio.Semaphore(concurrency)
+    results = [None] * len(queries)
+    pending = iter(enumerate(queries))
     async with AsyncFlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 
-        async def search(query):
-            async with gate:
-                return {"query": query, "response": await client.google.search(query, num=3)}
+        async def worker():
+            for index, query in pending:
+                try:
+                    results[index] = {"query": query, "response": await client.google.search(query, num=3)}
+                except Exception as error:
+                    results[index] = {
+                        "query": query,
+                        "error": {
+                            "name": type(error).__name__,
+                            "message": str(error),
+                            "status_code": getattr(error, "status_code", None),
+                            "code": getattr(error, "code", None),
+                            "request_id": getattr(error, "request_id", None),
+                            "retry_after": getattr(error, "retry_after", None),
+                        },
+                    }
 
-        return await asyncio.gather(*(search(q) for q in queries))
+        await asyncio.gather(*(worker() for _ in range(min(concurrency, len(queries)))))
+    return results
 
 
 def main(argv=None):
@@ -29,10 +44,15 @@ def main(argv=None):
     results = asyncio.run(search_all(args.queries, args.concurrency))
     for result in results:
         print(result["query"])
-        for payload in result["response"]["results"]:
-            for hit in payload.get("organic", []):
-                print(" ", hit.get("title", ""), hit.get("link", ""))
+        if "error" in result:
+            print(" ", result["error"]["message"])
+        else:
+            for payload in result["response"]["results"]:
+                for hit in payload.get("organic", []):
+                    print(" ", hit.get("title", ""), hit.get("link", ""))
     save_json(results, args.output)
+    if any("error" in result for result in results):
+        raise ValueError("Some searches failed; inspect individual results before deciding what to submit again")
 
 
 if __name__ == "__main__":

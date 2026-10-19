@@ -16,10 +16,10 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest
-      - run: python -m ruff check src tests examples
-      - run: python -m ruff format --check src tests examples
+      - run: python -m ruff check src tests examples scripts docs/conf.py
+      - run: python -m ruff format --check src tests examples scripts docs/conf.py
       - run: python -m mypy src/flashdata
-      - run: python -m build
+      - run: python scripts/verify_package.py
       - run: python examples/offline.py
       - uses: actions/upload-artifact@v4
         with:

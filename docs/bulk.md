@@ -1,5 +1,7 @@
 # Build a YouTube dataset with bulk jobs
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 Bulk jobs process a UTF-8 file containing one video ID per line. Supported sources:
 `youtube_metadata`, `youtube_transcript`, `youtube_captions`, `youtube_trainability`,
 and `youtube_download`. File uploads support 1 byte to 2 GiB. A bulk job uses one source
@@ -40,6 +42,57 @@ Bulk options use `options`, rather than individual query `params`. Metadata acce
 `include_formats` and `include_chapters`; transcript/captions accept `language` and `auto`;
 license checks have no data options. Data sources may also set `result_storage` for
 cloud delivery. Downloads require `options.storage`. See [storage](storage.md).
+
+## Download media into your storage
+
+Use `source="youtube_download"` and put the private destination in `options.storage`.
+Prepare `video-ids.txt` and a private destination JSON file as described in
+[storage configuration](storage.md), then run the complete task:
+
+```python
+import json
+import os
+from pathlib import Path
+from flashdata import FlashData
+
+storage = json.loads(Path("private-storage.json").read_text(encoding="utf-8"))
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    receipt = client.bulk.create({
+        "source": "youtube_download",
+        "options": {
+            "download_type": "audio_video",
+            "video_quality": "<=720",
+            "output_format": "mp4",
+            "storage": storage,
+        },
+    })
+    bulk_id = receipt["job"]["id"]
+    print("Save this bulk ID:", bulk_id, flush=True)
+    client.bulk.upload_file(receipt, Path("video-ids.txt"))
+    client.bulk.start(bulk_id)
+
+    completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
+    print("Counts:", completed["counts"])
+    for row in client.bulk.rows(bulk_id):
+        print(row["video_id"], row["status"])
+```
+
+For a runnable export:
+
+```sh
+python examples/bulk_download.py video-ids.txt --storage-file private-storage.json --output artifacts/downloads.ndjson
+python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads.ndjson
+```
+
+Both bulk CLIs save only the job record to `OUTPUT.job.json` before upload and refresh
+it on completion. They never save the signed upload descriptor. Result rows are exported
+before an item-failure exit status, preserving successful and failed records for recovery.
+The media goes to your bucket; the NDJSON describes delivery, rather than containing media.
+
+A resume command waits for a task that has already started. An `awaiting_upload` draft
+still needs its input uploaded and `start` called. A paused task requires resolving the
+blocking condition and calling `resume` before waiting again.
 
 ## Progress and controls
 

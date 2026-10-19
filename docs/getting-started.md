@@ -1,5 +1,7 @@
 # Getting started
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 ## Install from source
 
 In the `flashdata-python` checkout, create an environment and install the package:

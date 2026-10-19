@@ -155,6 +155,19 @@ async def test_bulk_cursor_pages_are_bounded_and_checked(api):
     assert seen[-1].url.params["cursor"] == "same"
 
 
+async def test_bulk_listing_detects_a_loop_back_to_the_initial_cursor(api):
+    seen = []
+
+    def handle(request):
+        seen.append(request)
+        return httpx.Response(200, json={"data": [], "pagination": {"hasMore": True, "nextCursor": "initial"}})
+
+    client = api(handle)
+    with pytest.raises(ProtocolError):
+        await collect(client.bulk.iter_jobs(max_pages=5, cursor="initial"))
+    assert len(seen) == 1
+
+
 async def test_bulk_rows_reject_duplicate_and_untrusted_part_descriptors(api):
     client = api(lambda _: httpx.Response(200, json={"parts": [{"number": -1, "href": "https://evil.example"}]}))
     with pytest.raises(ProtocolError):

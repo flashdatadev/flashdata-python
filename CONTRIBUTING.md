@@ -1,5 +1,7 @@
 # Contributing
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 Use a branch for changes and keep API examples runnable from a source checkout. Never
 commit API keys, storage credentials, signed result URLs or customer data.
 
@@ -14,6 +16,7 @@ python -m ruff check src tests examples
 python -m mypy src/flashdata
 python -m sphinx -n -W --keep-going -b html docs docs/_build/html
 python -m build
+python scripts/verify_package.py
 python examples/offline.py
 ```
 

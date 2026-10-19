@@ -2,6 +2,7 @@ include LICENSE README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md openapi.json 
 recursive-include docs *.md *.rst *.py *.css
 recursive-include examples *.py *.txt *.md
 recursive-include tests *.py *.json
+recursive-include scripts *.py
 recursive-include src/flashdata *.json py.typed
 include .readthedocs.yaml
 prune docs/_build

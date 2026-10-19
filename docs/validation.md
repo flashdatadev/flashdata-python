@@ -1,4 +1,11 @@
-# SDK review and validation — 2026-10-19
+# SDK review and validation — 2026-10-20
+
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
+The [Python and TypeScript comparison](sdk-parity.md) records the latest cross-SDK
+alignment, matching endpoints, workflow recovery and official-link checks. Offline
+evidence below was refreshed after alignment; paid live evidence comes from the earlier
+individual review and was not rerun during the comparison.
 
 This review compared the Python implementation with the current FlashData backend,
 the public source catalogue, live API responses, and
@@ -33,12 +40,12 @@ formats are not exposed as invented FlashData APIs.
 
 Validated locally on Windows with Python 3.12.14:
 
-- **280 offline tests:** both clients, all 15 source request contracts, background/batch,
+- **301 offline tests:** both clients, all 15 source request contracts, background/batch,
   bulk lifecycle and controls, signed redirects, credential separation, bounded parsing,
   local HTTP integration, nested typing, and failure recovery.
-- **33 documentation Python blocks executed**, rather than only parsed; every relative
+- **34 documentation Python blocks executed**, rather than only parsed; every relative
   documentation link and every source's parameter coverage is checked.
-- **23 example scripts checked** for import safety, help without a key, and execution
+- **25 example scripts checked** for import safety, help without a key, and execution
   with source-shaped test responses, including JSON/CSV/NDJSON exports and resume paths.
 - **19 live integration tests passed:** all 14 realtime data sources, a background query,
   a 14-source batch with completed results, metadata bulk upload/start/wait/manifest/rows,

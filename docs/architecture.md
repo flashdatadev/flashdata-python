@@ -1,5 +1,7 @@
 # SDK architecture
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 The public clients own two HTTPX pools: one for FlashData API requests, one for signed
 storage. Separate pools prevent API cookies and credentials from reaching object storage.
 The Data API handles execution; the Management API handles account, job, and bulk state.

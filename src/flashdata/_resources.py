@@ -32,6 +32,11 @@ from .types import (
     GoogleVideosResponse,
     RealtimeQuery,
     Source,
+    SourceCatalog,
+    Health,
+    PlanCatalog,
+    PublicStatus,
+    JobResult,
     UpdateBulkJobRequest,
     YoutubeCaptionsParams,
     YoutubeCaptionsResponse,
@@ -126,16 +131,16 @@ class Account(Resource):
 
 
 class Public(Resource):
-    def sources(self, *, timeout: float | None = None) -> dict[str, Any]:
+    def sources(self, *, timeout: float | None = None) -> SourceCatalog:
         return self._client._request("GET", "/catalog/sources", public=True, timeout=timeout)
 
-    def plans(self, *, timeout: float | None = None) -> dict[str, Any]:
+    def plans(self, *, timeout: float | None = None) -> PlanCatalog:
         return self._client._request("GET", "/plans", public=True, timeout=timeout)
 
-    def status(self, *, timeout: float | None = None) -> dict[str, Any]:
+    def status(self, *, timeout: float | None = None) -> PublicStatus:
         return self._client._request("GET", "/status", public=True, timeout=timeout)
 
-    def health(self, *, timeout: float | None = None) -> dict[str, Any]:
+    def health(self, *, timeout: float | None = None) -> Health:
         return self._client._request("GET", "/health", public=True, timeout=timeout)
 
 
@@ -143,7 +148,7 @@ class Jobs(Resource):
     def get(self, job_id: str, *, timeout: float | None = None) -> ConsoleJob:
         return job_record(self._client._request("GET", "/jobs/" + identifier(job_id), timeout=timeout))
 
-    def result(self, job_id: str, *, timeout: float | None = None) -> dict[str, Any]:
+    def result(self, job_id: str, *, timeout: float | None = None) -> JobResult:
         return self._client._result("/jobs/" + identifier(job_id) + "/results", timeout=timeout)
 
     def wait(self, job_id: str, *, timeout: float = 300, poll_interval: float = 2) -> ConsoleJob:
@@ -295,7 +300,7 @@ class Bulk(Resource):
     def iter_jobs(self, *, max_pages: int, limit: int = 20, cursor: str | None = None, timeout: float | None = None):
         """Yield bulk job records from a bounded number of cursor pages."""
         integer(max_pages, "max_pages", 1, 1000)
-        seen = set()
+        seen = {cursor} if cursor else set()
         for _ in range(max_pages):
             page = self.list(limit=limit, cursor=cursor, timeout=timeout)
             if not isinstance(page.get("data"), list) or not isinstance(page.get("pagination"), dict):
@@ -1062,16 +1067,16 @@ class AsyncAccount(AsyncResource):
 
 
 class AsyncPublic(AsyncResource):
-    async def sources(self, *, timeout: float | None = None) -> dict[str, Any]:
+    async def sources(self, *, timeout: float | None = None) -> SourceCatalog:
         return await self._client._request("GET", "/catalog/sources", public=True, timeout=timeout)
 
-    async def plans(self, *, timeout: float | None = None) -> dict[str, Any]:
+    async def plans(self, *, timeout: float | None = None) -> PlanCatalog:
         return await self._client._request("GET", "/plans", public=True, timeout=timeout)
 
-    async def status(self, *, timeout: float | None = None) -> dict[str, Any]:
+    async def status(self, *, timeout: float | None = None) -> PublicStatus:
         return await self._client._request("GET", "/status", public=True, timeout=timeout)
 
-    async def health(self, *, timeout: float | None = None) -> dict[str, Any]:
+    async def health(self, *, timeout: float | None = None) -> Health:
         return await self._client._request("GET", "/health", public=True, timeout=timeout)
 
 
@@ -1079,7 +1084,7 @@ class AsyncJobs(AsyncResource):
     async def get(self, job_id: str, *, timeout: float | None = None) -> ConsoleJob:
         return job_record(await self._client._request("GET", "/jobs/" + identifier(job_id), timeout=timeout))
 
-    async def result(self, job_id: str, *, timeout: float | None = None) -> dict[str, Any]:
+    async def result(self, job_id: str, *, timeout: float | None = None) -> JobResult:
         return await self._client._result("/jobs/" + identifier(job_id) + "/results", timeout=timeout)
 
     async def wait(self, job_id: str, *, timeout: float = 300, poll_interval: float = 2) -> ConsoleJob:
@@ -1237,7 +1242,7 @@ class AsyncBulk(AsyncResource):
     ):
         """Yield bulk job records from a bounded number of cursor pages."""
         integer(max_pages, "max_pages", 1, 1000)
-        seen = set()
+        seen = {cursor} if cursor else set()
         for _ in range(max_pages):
             page = await self.list(limit=limit, cursor=cursor, timeout=timeout)
             if not isinstance(page.get("data"), list) or not isinstance(page.get("pagination"), dict):

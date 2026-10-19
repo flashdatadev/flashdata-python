@@ -1,5 +1,7 @@
 # Runnable examples
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 Install from the repository root with `python -m pip install .`. Each live example passes
 `api_key=os.getenv("FLASHDATA_API_KEY")` to its client, so set `FLASHDATA_API_KEY` in your
 environment before running it. Live examples consume credits; `account.py` uses free account
@@ -51,24 +53,33 @@ download and waits only when `--wait` is passed. Keep destination credentials pr
 
 ```sh
 python examples/offline.py
+python examples/discovery.py --output artifacts/discovery.json
 python examples/account.py --output artifacts/account.json
 python examples/async_client.py coffee tea --concurrency 2
 python examples/async_query.py coffee --output artifacts/job.json
 python examples/batch.py --wait --output artifacts/batch.json
 python examples/search_to_csv.py coffee --max-pages 2 --output artifacts/search.csv
 python examples/bulk.py examples/video-ids.example.txt --output artifacts/videos.ndjson
+python examples/bulk_download.py examples/video-ids.example.txt --storage-file private-storage.json --output artifacts/downloads.ndjson
 ```
 
 `async_client.py` demonstrates Python asyncio. `async_query.py` demonstrates a server-side
 background job using the synchronous client. Both approaches also work together.
+`discovery.py` uses public endpoints with an explicit empty key and needs no credentials.
+The concurrency example uses a bounded worker pool, preserves individual successes/errors,
+and saves them before returning a failure exit status.
 
 Save the job/bulk ID printed before waiting. Resume after a polling deadline or process restart:
 
 ```sh
 python examples/async_query.py --job-id job_YOUR_SAVED_ID --output artifacts/job.json
 python examples/bulk.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/videos.ndjson
+python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads.ndjson
 ```
 
 Resume commands read existing work instead of submitting it again. A bulk export can contain
 failed rows; check counts and row status. A script's nonzero exit code signals an error or
 incomplete dataset. Inspect saved output before deciding which items to submit again.
+The bulk CLIs save a job record as `OUTPUT.job.json` before upload and on completion;
+signed upload descriptors are never saved. Resume assumes the task has already started.
+Drafts need upload/start and paused jobs need their blocking condition resolved and `resume` called.

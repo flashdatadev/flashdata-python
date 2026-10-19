@@ -1,5 +1,7 @@
 # API reference
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 `FlashData` and `AsyncFlashData` expose the same resource names. Public responses are
 ordinary dictionaries typed by `flashdata.types`. The API preserves wire names such
 as `createdAt` and `availableCredits`. Source helpers return a source response in realtime

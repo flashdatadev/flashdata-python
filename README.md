@@ -1,5 +1,7 @@
 # FlashData Python SDK
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 Google search results and YouTube data for Python applications, research pipelines,
 search monitoring, and retrieval workflows.
 
@@ -7,6 +9,18 @@ Get web, news, shopping, image, video, and local search results; discover YouTub
 read metadata and existing caption tracks; submit background jobs; and process video ID
 files in bulk. The SDK includes synchronous and asynchronous clients, typed parameters,
 local input validation, and structured errors. Python 3.10 or newer is required.
+
+## What is FlashData?
+
+[FlashData](https://flashdata.dev) provides APIs for Google search results, YouTube data,
+and cloud media delivery. Developers and data teams use these APIs for search monitoring,
+research, analytics, content discovery, and retrieval workflows for AI applications.
+
+Retrieve web, news, shopping, image, video, and local search results; discover YouTube
+videos and read metadata, existing caption tracks, channel data, and license labels.
+Use realtime requests, background jobs, mixed batches, or bulk video ID files to fit your
+workload. Media downloads deliver audio or video into your own cloud storage.
+See the [API documentation](https://flashdata.dev/docs) and [pricing](https://flashdata.dev/pricing).
 
 ## Install
 
@@ -171,6 +185,14 @@ After a process restart or polling timeout, use the saved ID with `client.bulk.g
 See [bulk controls and recovery](docs/bulk.md), [download options](docs/sources/youtube_download.md),
 and [all supported storage providers](docs/storage.md).
 
+The runnable example saves the job record beside its NDJSON export and resumes an
+already started task without creating another submission:
+
+```sh
+python examples/bulk_download.py video-ids.txt --storage-file private-storage.json --output artifacts/downloads.ndjson
+python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads.ndjson
+```
+
 ## Handle failures
 
 ```python
@@ -225,6 +247,9 @@ python examples/async_query.py "python tutorial" --output artifacts/result.json
 These commands call the live API and consume credits. Run `python examples/offline.py`
 for a demonstration with a mock transport and no account.
 
+The [SDK comparison](docs/sdk-parity.md) maps Python and TypeScript coverage, language
+differences, workflow guarantees, and verification limits side by side.
+
 ## Development
 
 ```sh
@@ -234,6 +259,7 @@ python -m ruff check src tests examples docs/conf.py
 python -m mypy src/flashdata
 python -m sphinx -n -W --keep-going -b html docs docs/_build/html
 python -m build
+python scripts/verify_package.py
 ```
 
 Tests use mock transports and a local HTTP server by default. Explicit opt-in tests

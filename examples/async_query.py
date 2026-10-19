@@ -3,6 +3,7 @@
 from argparse import ArgumentParser
 import os
 from flashdata import FlashData
+from _bulk import check_wait_timeout
 from _support import add_output, run, save_json
 
 
@@ -13,6 +14,7 @@ def main(argv=None):
     parser.add_argument("--wait-timeout", type=float, default=300)
     add_output(parser)
     args = parser.parse_args(argv)
+    check_wait_timeout(args.wait_timeout)
     with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
         job_id = args.job_id
         if not job_id:

@@ -1,5 +1,7 @@
 # YouTube cloud downloads
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs/sources/youtube_download)
+
 Deliver audio or video to your cloud storage. Individual and batch downloads run in the background. Pass destination credentials through `storage`; output media is not returned as a local file.
 
 ## Example
@@ -19,7 +21,7 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     print(client.jobs.result(receipt["id"]))
 ```
 
-Run `python examples/youtube_download.py dQw4w9WgXcQ --output artifacts/youtube_download.json` from the checkout. Use `--help` for options. The command consumes credits.
+Run `python examples/youtube_download.py dQw4w9WgXcQ --storage-file private-storage.json --output artifacts/youtube_download.json` from the checkout. Use `--help` for options. The command consumes credits.
 
 Configure `FLASHDATA_STORAGE_FILE` first; see [storage](../storage.md). Delivery requires a working customer destination.
 

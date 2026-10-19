@@ -1,5 +1,7 @@
 # FlashData Python SDK
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 Build applications with Google search and YouTube data using Python 3.10+.
 Choose a source, make a request, and work with ordinary dictionaries. Both sync and
 async clients cover realtime queries, background jobs, batch submission, and bulk files.
@@ -37,6 +39,7 @@ api-reference
 :maxdepth: 1
 
 architecture
+sdk-parity
 validation
 release
 ```

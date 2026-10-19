@@ -1,5 +1,7 @@
 # Google pagination
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 Use `google.pages` to process a bounded number of realtime pages. It yields response
 dictionaries lazily, stops on an empty hit list, and makes no request for pages you do
 not consume. Every fetched page is a separate paid query, including the empty final page.

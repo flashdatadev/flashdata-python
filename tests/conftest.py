@@ -34,7 +34,19 @@ def example_api(monkeypatch, tmp_path):
                 }
                 return httpx.Response(200, content=gzip.compress((json.dumps(row) + "\n").encode()))
             job_id = path.rsplit("/", 1)[-1]
-            return httpx.Response(200, json=FIXTURES[jobs.get(job_id, "google_search")]["response"])
+            source = jobs.get(job_id, "google_search")
+            response = FIXTURES[source]["response"]
+            stored = {
+                "id": job_id,
+                "source": source,
+                "status": "completed",
+                "results": response.get("results", []),
+                "completed_at": "2026-10-20T00:00:00Z",
+                "expires_at": "2026-10-21T00:00:00Z",
+            }
+            if source != "youtube_download":
+                stored["usage"] = response.get("usage", {"credits": 0})
+            return httpx.Response(200, json=stored)
         if path.startswith("/v1/"):
             data = json.loads(request.content)
             if path.endswith("/realtime"):
@@ -62,6 +74,8 @@ def example_api(monkeypatch, tmp_path):
             return httpx.Response(200, json={"data": [{"id": s} for s in FIXTURES]})
         if path.endswith(("/health", "/status")):
             return httpx.Response(200, json={"status": "ok"})
+        if path.endswith("/plans"):
+            return httpx.Response(200, json={"currency": "USD", "data": []})
         if "/jobs/" in path:
             if path.endswith("/results"):
                 return httpx.Response(

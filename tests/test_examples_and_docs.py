@@ -52,10 +52,12 @@ def test_examples_are_import_safe_and_help_needs_no_key(path, example_api, monke
     "name,args",
     [
         ("account", []),
+        ("discovery", []),
         ("async_client", ["coffee", "tea"]),
         ("async_query", ["coffee"]),
         ("batch", ["--wait"]),
         ("bulk", ["video-ids.txt"]),
+        ("bulk_download", ["video-ids.txt"]),
         ("pagination", []),
         ("search_to_csv", []),
         ("offline", []),
@@ -69,13 +71,21 @@ def test_workflow_examples_complete(name, args, example_api, monkeypatch, tmp_pa
         with (tmp_path / "artifacts/search.csv").open(newline="", encoding="utf-8") as stream:
             rows = list(csv.DictReader(stream))
         assert rows and len({r["link"] for r in rows}) == len(rows)
-    if name == "bulk":
-        rows = [json.loads(x) for x in (tmp_path / "artifacts/dataset.ndjson").read_text().splitlines()]
+    if name in ("bulk", "bulk_download"):
+        output = tmp_path / ("artifacts/dataset.ndjson" if name == "bulk" else "artifacts/downloads.ndjson")
+        rows = [json.loads(x) for x in output.read_text().splitlines()]
         assert len(rows) == 1 and rows[0]["status"] == "completed"
+        job = json.loads(Path(str(output) + ".job.json").read_text())
+        assert job["id"] == "bulk_docs12345" and "upload" not in job
 
 
 @pytest.mark.parametrize(
-    "name,flag,id_", [("async_query", "--job-id", "job_docs123"), ("bulk", "--bulk-id", "bulk_docs12345")]
+    "name,flag,id_",
+    [
+        ("async_query", "--job-id", "job_docs123"),
+        ("bulk", "--bulk-id", "bulk_docs12345"),
+        ("bulk_download", "--bulk-id", "bulk_docs12345"),
+    ],
 )
 def test_resume_examples_never_submit(name, flag, id_, example_api, monkeypatch):
     monkeypatch.setattr(sys, "argv", [name + ".py", flag, id_])
@@ -92,6 +102,7 @@ def test_every_documentation_python_block_executes(page, index, code, example_ap
 def test_documentation_relative_links_exist():
     for page in PAGES:
         text = page.read_text(encoding="utf-8")
+        assert "[FlashData](https://flashdata.dev)" in text, page
         for target in re.findall(r"\]\(([^)]+)\)", text):
             if re.match(r"^[a-z]+:", target) or target.startswith("#"):
                 continue

@@ -1,5 +1,7 @@
 # Errors and recovery
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 All SDK exceptions inherit from `FlashDataError`. Catch specific errors when you can
 recover and let unexpected failures reach your application's error reporting.
 
@@ -55,3 +57,6 @@ resubmitting. No idempotency key behavior is promised by this SDK.
 Read requests are safer to retry with application-controlled backoff. Respect `retry_after`
 and your own retry budget. A polling deadline leaves accepted work running. `wait()`
 stops on API/network errors rather than concealing a rate limit behind more requests.
+Async task cancellation propagates as Python's `asyncio.CancelledError`; a local
+interrupt or cancellation does not undo server work. If cancellation happened during a
+submission, treat admission as unknown and reconcile before repeating the paid request.

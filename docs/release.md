@@ -1,5 +1,7 @@
 # Release preparation
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
 This repository is local. Before publication, create the official FlashData GitHub
 account, choose the repository owner and verify package-name availability/ownership.
 The planned Python distribution name is `flashdata` on PyPI; verify ownership before
@@ -19,6 +21,7 @@ python -m ruff check src tests examples
 python -m mypy src/flashdata
 python -m sphinx -n -W --keep-going -b html docs docs/_build/html
 python -m build
+python scripts/verify_package.py
 ```
 
 The wheel contains the library, typing marker and source schemas. The sdist also includes

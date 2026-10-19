@@ -1,5 +1,12 @@
 # Changelog
 
+[FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
+
+Cross-SDK review: aligned request/bulk typing and stored-result envelopes, added public
+discovery and bulk download CLIs, saved bulk job records, preserved concurrent partial
+results, validated waiting arguments before submission, fixed initial cursor loops,
+added package-consumer verification, and linked every guide to official FlashData pages.
+
 ## 0.1.0 — local release candidate
 
 - Document explicit `api_key=os.getenv("FLASHDATA_API_KEY")` initialization consistently
