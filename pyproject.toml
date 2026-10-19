@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flashdata"
+version = "0.1.0"
+description = "Official Python SDK for FlashData Google Search, YouTube data and cloud media delivery APIs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "FlashData", email = "support@flashdata.dev"}]
+dependencies = ["httpx>=0.27,<1", "jsonschema>=4.23,<5", "typing_extensions>=4.12,<5"]
+keywords = ["flashdata", "google-search", "youtube", "transcripts", "sdk", "async", "bulk"]
+classifiers = ["Programming Language :: Python :: 3", "Typing :: Typed", "Topic :: Software Development :: Libraries :: Python Modules"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "build>=1,<2", "ruff>=0.12,<1", "mypy>=1.15,<3", "types-jsonschema"]
+
+[project.urls]
+Homepage = "https://flashdata.dev"
+Documentation = "https://flashdata.dev/docs"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+flashdata = ["py.typed", "_schemas.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra"
+markers = ["live: explicitly enabled production API smoke checks"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["F403", "F405"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/flashdata/types.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+check_untyped_defs = true
+files = ["src/flashdata"]
