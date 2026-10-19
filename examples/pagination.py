@@ -1,7 +1,7 @@
-"""At most two paid Google pages; iteration stops on an empty page."""
+"""Export a bounded set of Google result pages; see search_to_csv.py."""
 
-from flashdata import FlashData
+from search_to_csv import main
+from _support import run
 
-with FlashData() as client:
-    for response in client.google.pages("google_search", "coffee", max_pages=2, gl="us"):
-        print(response["results"])
+if __name__ == "__main__":
+    run(main)

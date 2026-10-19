@@ -1,68 +1,30 @@
-# Youtube Suggestions
+# YouTube suggestions
 
-Wire source: `youtube_suggestions`. Helper: `client.youtube.suggestions`. Required input: `query`.
-Modes: realtime, async, batch. [Product API reference](https://flashdata.dev/docs/sources/youtube_suggestions).
+Expand query ideas using autocomplete. Each item of the outer `results` array is a list of suggestion strings, rather than an object with a `suggestions` property.
 
-## Runnable example
-
-Run from the repository root after setting `FLASHDATA_API_KEY`:
-
-```sh
-python examples/youtube_suggestions.py
-```
+## Example
 
 ```python
 from flashdata import FlashData
 
 with FlashData() as client:
-    response = client.youtube.suggestions('python', language='en', region='us')
-    print(response)
+    response = client.youtube.suggestions("python", language="en", region="US")
+    for suggestions in response["results"]:
+        for suggestion in suggestions:
+            print(suggestion)
 ```
+
+Run `python examples/youtube_suggestions.py python --output artifacts/youtube_suggestions.json` from the checkout. Use `--help` for options. The command consumes credits.
 
 ## Parameters
 
-The helper takes the main input and the following source options. Generic query methods
-put options inside `params`. Omitted defaults are resolved by the API, not inserted by
-the SDK. Request options select mode/callback separately from source parameters.
+`query` is required. Source options are keyword arguments, or entries in `params` when using `queries`. Data helpers default to realtime; pass `mode="async"` for background work. `timeout` controls the HTTP request.
 
-| Parameter | Type | Server/catalog default | Meaning / bounds |
-| --- | --- | --- | --- |
-| `language` | string | "en" |  Must match the documented format. |
-| `region` | string | "US" |  Must match the documented format. |
+| Option | Type / constraints | Default |
+| --- | --- | --- |
+| `language` | string; pattern `^[A-Za-z0-9-]+$` | "en" |
+| `region` | string; pattern `^[A-Za-z]{2}$` | "US" |
 
-For `filters`, see the complete property definitions in [source-contract.json](../../source-contract.json).
+## Use at scale
 
-## Response example
-
-Illustrative provider fields; availability varies. The SDK preserves unknown fields.
-
-```json
-{
-  "source": "youtube_suggestions",
-  "status": "done",
-  "results": [
-    [
-      "python for beginners",
-      "python hunting everglades",
-      "python",
-      "python full course",
-      "python funk",
-      "python got7",
-      "python commands",
-      "python cowboy",
-      "python tutorial",
-      "python projects",
-      "python coding",
-      "python course",
-      "python snake",
-      "python basics"
-    ]
-  ],
-  "usage": {
-    "credits": 0.01
-  },
-  "created_at": "2026-09-16T07:41:47.147Z"
-}
-```
-
-[Jobs and results](../jobs.md) · [Errors](../errors.md) · [Source index](index.md)
+All sources support [background and batch queries](../jobs.md). Read [errors and recovery](../errors.md) before adding application retries.

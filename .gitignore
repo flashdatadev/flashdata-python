@@ -18,3 +18,5 @@ coverage/
 *.log
 .DS_Store
 .idea/
+docs/_build/
+artifacts/

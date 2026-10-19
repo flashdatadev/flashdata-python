@@ -1,5 +1,30 @@
-from flashdata import FlashData
+"""Discover YouTube videos and print titles, channels, and watch links."""
 
-with FlashData() as client:
-    response = client.youtube.search("python", max_results=20)
-    print(response)
+from argparse import ArgumentParser
+from flashdata import FlashData
+from _support import add_output, report_usage, run, save_json
+
+
+def main(argv=None):
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("query", nargs="?", default="python tutorial")
+    parser.add_argument("--max-results", type=int, default=5, help="Maximum entities (1–20)")
+    parser.add_argument("--short", action="store_true", help="Filter videos shorter than four minutes")
+    add_output(parser)
+    args = parser.parse_args(argv)
+    filters = {"type": "video"}
+    if args.short:
+        filters["duration"] = "<4"
+    with FlashData() as client:
+        response = client.youtube.search(args.query, max_results=args.max_results, filters=filters)
+    for payload in response["results"]:
+        for video in payload.get("results", []):
+            print(f"{video.get('title', '')} | {video.get('channel', '')} | {video.get('durationString', '')}")
+            if video.get("videoId"):
+                print("https://www.youtube.com/watch?v=" + video["videoId"])
+    report_usage(response)
+    save_json(response, args.output)
+
+
+if __name__ == "__main__":
+    run(main)

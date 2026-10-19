@@ -1,23 +1,42 @@
-# Account and public discovery
+# Account, pricing and service discovery
+
+Read current access and plan limits before scaling a workload. These endpoints are free;
+they still have rate limits. Account credit balances and plan ceilings are shared across
+the account's API keys; usage reads are scoped to the key used for the request.
 
 ```python
 from flashdata import FlashData
+
 with FlashData() as client:
-    print(client.account.access())
-    print(client.account.balance())
-    print(client.account.pricing(source="google_search", request_count=10))
-    print(client.account.limits())
-    print(client.account.usage(source="google_search", from_="2026-01-01T00:00:00Z", to="2026-01-02T00:00:00Z"))
+    access = client.account.access()
+    balance = client.account.balance()
+    prices = client.account.pricing(source="youtube_metadata", request_count=100)
+    limits = client.account.limits()
+    usage = client.account.usage(source="youtube_metadata")
+    print(access["sources"], balance["availableCredits"], limits["limits"])
+    print(prices["prices"], usage["totals"])
 ```
 
-These reads spend no query Credits. Access/balance/pricing/limits share the server's
-120 reads/minute per client IP limit. Usage has its own limit and freshness information.
-Responses are scoped to the key's authorized sources. Balance, pricing and limits are
-snapshots, not an admission reservation. Pricing uses request counts, not result counts;
-Extended Search has a separate rate and downloads expose a per-TB rate.
+`pricing` accepts an optional `source` and `request_count` (1–100000). Its estimate is for
+that many calls, not that many search hits. Download costs depend on actual uploaded
+bytes and cannot be estimated by multiplying request count. Prices and availability can
+change; query them instead of hard-coding example values.
 
-`public.sources`, `public.plans`, `public.status` and `public.health` omit the key header.
-Public discovery can be used through a client configured with a key placeholder, while
-normal authenticated methods require a valid FlashData key. Key creation, checkout,
-login/session and admin functions remain console operations; these SDKs cover the
-developer API-key contract, not browser-cookie workflows.
+`usage` accepts `source`, `from_`, and `to`. Date filters are ISO 8601 strings; the server
+validates the range and may report delayed totals while processing. `limits` includes
+batch size, concurrency ceiling and pending jobs, rather than free execution slots.
+
+Public discovery needs no key:
+
+```python
+from flashdata import FlashData
+
+with FlashData(api_key="") as client:
+    sources = client.public.sources()["data"]
+    print([item["id"] for item in sources])
+    print(client.public.health()["status"])
+```
+
+`public.plans()` returns public USD plan data. `public.status()` returns service components.
+Public requests do not carry an API-key header, even when the client has a key.
+Account and job reads always require one. See [API reference](api-reference.md).

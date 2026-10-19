@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import ssl
 from pathlib import Path
 from typing import Any
 import httpx
@@ -26,21 +27,37 @@ class FlashData:
         management_url: str = "https://api.flashdata.dev",
         timeout: float = 120,
         max_response_bytes: int = 64 * 1024 * 1024,
+        max_line_bytes: int = 16 * 1024 * 1024,
         transport: Any = None,
         storage_transport: Any = None,
+        proxy: str | None = None,
+        verify: ssl.SSLContext | bool = True,
+        trust_env: bool = True,
     ):
         key = api_key if api_key is not None else os.environ.get("FLASHDATA_API_KEY", "")
-        if not isinstance(key, str) or not key.strip() or any(c in key for c in "\r\n"):
-            raise ValidationError("Set FLASHDATA_API_KEY or pass a non-empty api_key.")
+        if not isinstance(key, str) or not key.isascii() or any(c in key for c in "\r\n"):
+            raise ValidationError("api_key must be a string without line breaks.")
         self._key = key.strip()
+        self._result_origin: str | None = None
         self.data_url, self.management_url = origin(data_url), origin(management_url)
         self.timeout = positive(timeout, "timeout")
         self.max_response_bytes = integer(max_response_bytes, "max_response_bytes", 1, 2**53 - 1)
-        self._http = httpx.Client(transport=transport, timeout=timeout, follow_redirects=False)
+        self.max_line_bytes = integer(max_line_bytes, "max_line_bytes", 1, 2**53 - 1)
+        self._http = httpx.Client(
+            transport=transport,
+            timeout=timeout,
+            follow_redirects=False,
+            proxy=proxy,
+            verify=verify,
+            trust_env=trust_env,
+        )
         self._storage = httpx.Client(
             transport=storage_transport if storage_transport is not None else transport,
             timeout=timeout,
             follow_redirects=False,
+            proxy=proxy,
+            verify=verify,
+            trust_env=trust_env,
         )
         self.queries = Queries(self)
         self.account = Account(self)
@@ -83,6 +100,10 @@ class FlashData:
         timeout: float | None = None,
         redirect: bool = False,
     ) -> Any:
+        if not public and not self._key:
+            raise ValidationError("Set FLASHDATA_API_KEY or pass api_key before calling an authenticated endpoint.")
+        if timeout is not None:
+            positive(timeout, "timeout")
         base = self.data_url if data else self.management_url
         url = base + ("" if data else "/v2") + path
         headers = {"Accept": "application/json", "User-Agent": "flashdata-python/0.1.0"}
@@ -109,27 +130,33 @@ class FlashData:
         except httpx.TimeoutException:
             if method != "GET":
                 raise SubmissionUnknownError(
-                    "Submission response was lost. Check Jobs before submitting again."
+                    "Request response was lost; it may have been accepted. Reconcile before repeating it."
                 ) from None
             raise RequestTimeoutError("Read request timed out.") from None
         except httpx.RequestError:
             if method != "GET":
                 raise SubmissionUnknownError(
-                    "Submission response was lost. Check Jobs before submitting again."
+                    "Request response was lost; it may have been accepted. Reconcile before repeating it."
                 ) from None
             raise ConnectionError("Network request failed.") from None
 
-    def _result(self, path: str, *, binary: bool = False) -> Any:
-        location = self._request("GET", path, redirect=True)
+    def _result(self, path: str, *, binary: bool = False, timeout: float | None = None) -> Any:
+        location = self._request("GET", path, redirect=True, timeout=timeout)
         if not isinstance(location, str):
             # Supports a future direct JSON response without exposing credentials to storage.
             if binary:
                 raise ProtocolError("Expected a signed result redirect.")
             return location
-        access = self.account.access()
-        url = signed_url(location, access.get("result_origin"))
+        if self._result_origin is None:
+            self._result_origin = self.account.access(timeout=timeout).get("result_origin")
+        url = signed_url(location, self._result_origin)
         try:
-            with self._storage.stream("GET", url, headers={"Accept": "application/json"}) as response:
+            with self._storage.stream(
+                "GET",
+                url,
+                headers={"Accept": "application/json"},
+                timeout=timeout if timeout is not None else self.timeout,
+            ) as response:
                 raw = self._read(response)
                 if not 200 <= response.status_code < 300:
                     raise api_error(response, raw, (self._key, url))
@@ -139,7 +166,11 @@ class FlashData:
         except httpx.RequestError:
             raise ConnectionError("Signed result read failed.") from None
 
-    def _upload(self, created: dict[str, Any], path: str | os.PathLike[str]) -> None:
+    def _upload(self, created: dict[str, Any], path: str | os.PathLike[str], *, timeout: float | None = None) -> None:
+        if timeout is not None:
+            positive(timeout, "timeout")
+        if not isinstance(created, dict) or not isinstance(created.get("upload"), dict):
+            raise ValidationError("Pass the complete receipt returned by bulk.create().")
         upload = created.get("upload", {})
         if upload.get("method") != "PUT" or upload.get("contentType") != "text/plain; charset=utf-8":
             raise ProtocolError("Invalid bulk upload descriptor.")
@@ -147,8 +178,9 @@ class FlashData:
         size = file.stat().st_size
         if not 0 < size <= 2147483648:
             raise ValidationError("Bulk input must contain 1 byte to 2 GiB of UTF-8 video IDs.")
-        access = self.account.access()
-        url = signed_url(upload.get("href"), access.get("result_origin"))
+        if self._result_origin is None:
+            self._result_origin = self.account.access(timeout=timeout).get("result_origin")
+        url = signed_url(upload.get("href"), self._result_origin)
 
         def chunks():
             with file.open("rb") as stream:
@@ -163,6 +195,7 @@ class FlashData:
                 "PUT",
                 url,
                 content=chunks(),
+                timeout=timeout if timeout is not None else self.timeout,
                 headers={
                     "Content-Type": upload["contentType"],
                     "Content-Length": str(size),

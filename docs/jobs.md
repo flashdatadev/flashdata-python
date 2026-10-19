@@ -1,36 +1,65 @@
-# Background queries, batches and jobs
+# Background jobs and batch submission
 
-Use realtime for a response in the same HTTP request. Submit a background query when
-your application can retain the returned ID and read it later. Download always uses
-background submission. Batch submits multiple background queries in one request;
-every accepted query is billed independently and your plan's batch/pending limits apply.
+## Submit, save, wait, retrieve
 
 ```python
 from flashdata import FlashData
 
 with FlashData() as client:
-    receipt = client.queries.submit({"source": "youtube_metadata", "video_id": "dQw4w9WgXcQ"})
-    print(receipt["id"])  # Persist this ID immediately.
-    job = client.jobs.wait(receipt["id"], timeout=300, poll_interval=2)
-    result = client.jobs.result(job["id"])
-    print(result)
+    receipt = client.youtube.metadata("dQw4w9WgXcQ", mode="async", include_formats=False)
+    job_id = receipt["id"]
+    print(job_id, flush=True)
+    completed = client.jobs.wait(job_id, timeout=300, poll_interval=2)
+    result = client.jobs.result(job_id)
+    print(completed["status"], result)
 ```
 
-Use `client.queries.batch([query1, query2])` for a mixed batch. Use `client.jobs.get(id)`
-for one read. `AsyncFlashData` exposes the same operations with `await`.
+Submissions return an ID and status such as `pending`. Jobs progress through `pending`,
+`processing`, `completed` or `failed`. `jobs.get()` returns the job record, unwrapping the
+HTTP response's `job` property. `wait()` returns that record on completion or raises
+`JobFailedError` with `.job` on failure. A polling timeout retains `.job_id` and leaves
+the server job running. Resume reads with the same ID instead of resubmitting.
 
-`wait` is explicit, bounded polling of the same ID. It never resubmits the query.
-Completion returns the job; failed jobs raise `JobFailedError`. A polling timeout keeps
-the ID in the exception so you can resume reading it. Stopping a local wait does not
-cancel remote work. Standard jobs expose no cancellation endpoint in the public contract.
+`jobs.result()` retrieves a JSON object with `id`, `source`, `status`, `results`, `usage`,
+`completed_at`, and `expires_at`. Decode the source payloads in `results` using the same
+field paths as realtime queries.
+The helper checks the signed-storage origin advertised by authenticated API discovery
+and never forwards API credentials to storage. Read completed results within the
+service's 24-hour retention window. 409 means not ready; 410 means expired.
 
-Result retrieval authenticates with Management, validates its 302 location against the
-current access response's `result_origin`, then fetches storage with no API credential.
-Storage redirects are rejected. Results are available for 24 hours after completion;
-an expired result returns HTTP 410. Call `jobs.result` again to obtain a fresh signed
-URL while the result still exists. Persist results in your own storage when needed.
+## Submit a mixed batch
 
-Callbacks are optional top-level `callback_url` values in async queries, including each
-batch member. Use a public HTTPS endpoint on port 443. A callback can be duplicated or
-arrive after your application restarts; correlate by the returned job ID. For callback
-payloads and server behavior see [the API guide](https://flashdata.dev/docs/guides/async-batch).
+```python
+from flashdata import FlashData
+
+with FlashData() as client:
+    batch = client.queries.batch([
+        {"source": "google_search", "query": "coffee", "params": {"num": 3}},
+        {"source": "youtube_metadata", "video_id": "dQw4w9WgXcQ",
+         "params": {"include_formats": False}},
+    ])
+    for item in batch["queries"]:
+        print(item["source"], item["id"], flush=True)
+```
+
+Input validation happens before submission. The server validates batch inputs and checks
+plan limits; malformed batches can fail as a whole. A successful response contains a job
+receipt for each input. Each job can subsequently complete or fail independently, so save
+all IDs and check their final states. `total_credits` and `usage.credits` describe submission
+charges; a background receipt is not proof of completion.
+Use `account.limits()` to find the current plan's `batchSize`.
+
+`queries.realtime()` and `queries.submit()` accept the same wire dictionaries as each
+source helper: `source` and its main input at the top level, source options in `params`,
+and `callback_url` at the top level. They are useful for dynamically configured pipelines.
+
+## Callbacks
+
+Supply `callback_url="https://your.example/jobs/callback"` on a background helper or
+in a submitted query dictionary. The endpoint must be public HTTPS on port 443. Callback
+delivery can be repeated or fail; use its delivery/job identifiers to deduplicate, and
+read the job API for authoritative state. A callback does not replace saving the job ID.
+Realtime requests do not support callbacks. The SDK does not run a webhook server.
+
+The API-key API has no standard job listing or cancellation method. Persist IDs with
+your own request metadata. If a mutation loses its response, see [unknown submissions](errors.md).

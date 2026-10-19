@@ -7,18 +7,18 @@ from typing import Any, Literal
 from typing_extensions import TypedDict, Required, Unpack
 
 ApiAccess = TypedDict(
-    "ApiAccess", {"sources": "Required[list[ApiAccessSource]]", "result_origin": "Required[str | None]"}, total=False
+    "ApiAccess", {"sources": Required["list[ApiAccessSource]"], "result_origin": Required["str | None"]}, total=False
 )
 
 ApiAccessBalance = TypedDict(
     "ApiAccessBalance",
     {
-        "scope": "Required[Literal['account']]",
-        "unit": "Required[Literal['Credits']]",
-        "balanceCredits": "Required[float]",
-        "availableCredits": "Required[float]",
-        "updatedAt": "Required[str | None]",
-        "note": "Required[str]",
+        "scope": Required["Literal['account']"],
+        "unit": Required["Literal['Credits']"],
+        "balanceCredits": Required["float"],
+        "availableCredits": Required["float"],
+        "updatedAt": Required["str | None"],
+        "note": Required["str"],
     },
     total=False,
 )
@@ -26,11 +26,11 @@ ApiAccessBalance = TypedDict(
 ApiAccessLimits = TypedDict(
     "ApiAccessLimits",
     {
-        "scope": "Required[Literal['account']]",
-        "plan": "Required[ApiAccessPlan]",
-        "limits": "Required[dict[str, Any]]",
-        "current": "Required[dict[str, Any]]",
-        "note": "Required[str]",
+        "scope": Required["Literal['account']"],
+        "plan": Required["ApiAccessPlan"],
+        "limits": Required["dict[str, Any]"],
+        "current": Required["dict[str, Any]"],
+        "note": Required["str"],
     },
     total=False,
 )
@@ -42,11 +42,11 @@ ApiAccessPlan = TypedDict(
 ApiAccessPricing = TypedDict(
     "ApiAccessPricing",
     {
-        "unit": "Required[Literal['Credits']]",
-        "plan": "Required[ApiAccessPlan]",
-        "requestCount": "Required[int]",
-        "prices": "Required[list[dict[str, Any]]]",
-        "note": "Required[str]",
+        "unit": Required["Literal['Credits']"],
+        "plan": Required["ApiAccessPlan"],
+        "requestCount": Required["int"],
+        "prices": Required["list[dict[str, Any]]"],
+        "note": Required["str"],
     },
     total=False,
 )
@@ -72,15 +72,15 @@ ApiAccessSource = Literal[
 ApiKeyUsage = TypedDict(
     "ApiKeyUsage",
     {
-        "scope": "Required[Literal['account_authorized_sources']]",
-        "unit": "Required[Literal['Credits']]",
-        "from": "Required[str]",
-        "to": "Required[str]",
-        "observedAt": "Required[str]",
-        "totals": "Required[UsageCounts]",
-        "bySource": "Required[list[dict[str, Any]]]",
-        "updating": "Required[bool]",
-        "note": "Required[str]",
+        "scope": Required["Literal['account_authorized_sources']"],
+        "unit": Required["Literal['Credits']"],
+        "from": Required["str"],
+        "to": Required["str"],
+        "observedAt": Required["str"],
+        "totals": Required["UsageCounts"],
+        "bySource": Required["list[dict[str, Any]]"],
+        "updating": Required["bool"],
+        "note": Required["str"],
     },
     total=False,
 )
@@ -88,8 +88,8 @@ ApiKeyUsage = TypedDict(
 AsyncQuery_google_images = TypedDict(
     "AsyncQuery_google_images",
     {
-        "source": "Required[Literal['google_images']]",
-        "query": "Required[str]",
+        "source": Required["Literal['google_images']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -99,8 +99,8 @@ AsyncQuery_google_images = TypedDict(
 AsyncQuery_google_news = TypedDict(
     "AsyncQuery_google_news",
     {
-        "source": "Required[Literal['google_news']]",
-        "query": "Required[str]",
+        "source": Required["Literal['google_news']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -110,8 +110,8 @@ AsyncQuery_google_news = TypedDict(
 AsyncQuery_google_places = TypedDict(
     "AsyncQuery_google_places",
     {
-        "source": "Required[Literal['google_places']]",
-        "query": "Required[str]",
+        "source": Required["Literal['google_places']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -121,8 +121,8 @@ AsyncQuery_google_places = TypedDict(
 AsyncQuery_google_search = TypedDict(
     "AsyncQuery_google_search",
     {
-        "source": "Required[Literal['google_search']]",
-        "query": "Required[str]",
+        "source": Required["Literal['google_search']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -132,8 +132,8 @@ AsyncQuery_google_search = TypedDict(
 AsyncQuery_google_shopping = TypedDict(
     "AsyncQuery_google_shopping",
     {
-        "source": "Required[Literal['google_shopping']]",
-        "query": "Required[str]",
+        "source": Required["Literal['google_shopping']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -143,8 +143,8 @@ AsyncQuery_google_shopping = TypedDict(
 AsyncQuery_google_videos = TypedDict(
     "AsyncQuery_google_videos",
     {
-        "source": "Required[Literal['google_videos']]",
-        "query": "Required[str]",
+        "source": Required["Literal['google_videos']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -154,8 +154,8 @@ AsyncQuery_google_videos = TypedDict(
 AsyncQuery_youtube_captions = TypedDict(
     "AsyncQuery_youtube_captions",
     {
-        "source": "Required[Literal['youtube_captions']]",
-        "video_id": "Required[str]",
+        "source": Required["Literal['youtube_captions']"],
+        "video_id": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -165,8 +165,8 @@ AsyncQuery_youtube_captions = TypedDict(
 AsyncQuery_youtube_channel = TypedDict(
     "AsyncQuery_youtube_channel",
     {
-        "source": "Required[Literal['youtube_channel']]",
-        "handle": "Required[str]",
+        "source": Required["Literal['youtube_channel']"],
+        "handle": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -176,9 +176,9 @@ AsyncQuery_youtube_channel = TypedDict(
 AsyncQuery_youtube_download = TypedDict(
     "AsyncQuery_youtube_download",
     {
-        "source": "Required[Literal['youtube_download']]",
-        "video_id": "Required[str]",
-        "params": "Required[dict[str, Any]]",
+        "source": Required["Literal['youtube_download']"],
+        "video_id": Required["str"],
+        "params": Required["dict[str, Any]"],
         "callback_url": "str | None",
     },
     total=False,
@@ -187,8 +187,8 @@ AsyncQuery_youtube_download = TypedDict(
 AsyncQuery_youtube_metadata = TypedDict(
     "AsyncQuery_youtube_metadata",
     {
-        "source": "Required[Literal['youtube_metadata']]",
-        "video_id": "Required[str]",
+        "source": Required["Literal['youtube_metadata']"],
+        "video_id": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -198,8 +198,8 @@ AsyncQuery_youtube_metadata = TypedDict(
 AsyncQuery_youtube_search = TypedDict(
     "AsyncQuery_youtube_search",
     {
-        "source": "Required[Literal['youtube_search']]",
-        "query": "Required[str]",
+        "source": Required["Literal['youtube_search']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -209,8 +209,8 @@ AsyncQuery_youtube_search = TypedDict(
 AsyncQuery_youtube_search_extended = TypedDict(
     "AsyncQuery_youtube_search_extended",
     {
-        "source": "Required[Literal['youtube_search_extended']]",
-        "query": "Required[str]",
+        "source": Required["Literal['youtube_search_extended']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -220,8 +220,8 @@ AsyncQuery_youtube_search_extended = TypedDict(
 AsyncQuery_youtube_suggestions = TypedDict(
     "AsyncQuery_youtube_suggestions",
     {
-        "source": "Required[Literal['youtube_suggestions']]",
-        "query": "Required[str]",
+        "source": Required["Literal['youtube_suggestions']"],
+        "query": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -231,8 +231,8 @@ AsyncQuery_youtube_suggestions = TypedDict(
 AsyncQuery_youtube_trainability = TypedDict(
     "AsyncQuery_youtube_trainability",
     {
-        "source": "Required[Literal['youtube_trainability']]",
-        "video_id": "Required[str]",
+        "source": Required["Literal['youtube_trainability']"],
+        "video_id": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -242,8 +242,8 @@ AsyncQuery_youtube_trainability = TypedDict(
 AsyncQuery_youtube_transcript = TypedDict(
     "AsyncQuery_youtube_transcript",
     {
-        "source": "Required[Literal['youtube_transcript']]",
-        "video_id": "Required[str]",
+        "source": Required["Literal['youtube_transcript']"],
+        "video_id": Required["str"],
         "params": "dict[str, Any]",
         "callback_url": "str | None",
     },
@@ -253,61 +253,65 @@ AsyncQuery_youtube_transcript = TypedDict(
 AsyncSubmission = TypedDict(
     "AsyncSubmission",
     {
-        "id": "str",
-        "source": "str",
-        "status": "str",
-        "created_at": "str",
-        "links": "list[JobLink]",
-        "usage": "dict[str, Any]",
+        "id": Required["str"],
+        "source": Required["str"],
+        "status": Required["str"],
+        "created_at": Required["str"],
+        "links": Required["list[JobLink]"],
+        "usage": Required["dict[str, Any]"],
     },
     total=False,
 )
 
 BulkJobCreated = TypedDict(
-    "BulkJobCreated", {"job": "Required[BulkJob]", "upload": "Required[dict[str, Any]]"}, total=False
+    "BulkJobCreated", {"job": Required["BulkJob"], "upload": Required["dict[str, Any]"]}, total=False
 )
 
 BulkJob = TypedDict(
     "BulkJob",
     {
-        "id": "Required[str]",
-        "source": "Required[Literal['youtube_metadata', 'youtube_transcript', 'youtube_captions', 'youtube_trainability', 'youtube_download']]",
-        "status": "Required[Literal['awaiting_upload', 'running', 'paused', 'finalizing', 'completed', 'failed', 'cancelled']]",
-        "input": "Required[dict[str, Any]]",
-        "counts": "Required[dict[str, Any]]",
-        "pauseReason": "Required[str | None]",
-        "delivery": "Required[dict[str, Any]]",
-        "error": "Required[None | dict[str, Any]]",
-        "createdAt": "Required[str]",
-        "startedAt": "Required[str | None]",
-        "completedAt": "Required[str | None]",
-        "expiresAt": "Required[str | None]",
-        "links": "Required[list[JobLink]]",
+        "id": Required["str"],
+        "source": Required[
+            "Literal['youtube_metadata', 'youtube_transcript', 'youtube_captions', 'youtube_trainability', 'youtube_download']"
+        ],
+        "status": Required[
+            "Literal['awaiting_upload', 'running', 'paused', 'finalizing', 'completed', 'failed', 'cancelled']"
+        ],
+        "input": Required["dict[str, Any]"],
+        "counts": Required["dict[str, Any]"],
+        "pauseReason": Required["str | None"],
+        "delivery": Required["dict[str, Any]"],
+        "error": Required["None | dict[str, Any]"],
+        "createdAt": Required["str"],
+        "startedAt": Required["str | None"],
+        "completedAt": Required["str | None"],
+        "expiresAt": Required["str | None"],
+        "links": Required["list[JobLink]"],
     },
     total=False,
 )
 
 BulkJobPage = TypedDict(
-    "BulkJobPage", {"data": "Required[list[BulkJob]]", "pagination": "Required[Pagination]"}, total=False
+    "BulkJobPage", {"data": Required["list[BulkJob]"], "pagination": Required["Pagination"]}, total=False
 )
 
-BulkJobResponse = TypedDict("BulkJobResponse", {"job": "Required[BulkJob]"}, total=False)
+BulkJobResponse = TypedDict("BulkJobResponse", {"job": Required["BulkJob"]}, total=False)
 
 ConsoleJob = TypedDict(
     "ConsoleJob",
     {
-        "createdAt": "Required[str]",
-        "credits": "Required[float]",
-        "durationMs": "Required[float | None]",
-        "error": "Required[str | None]",
-        "id": "Required[str]",
-        "params": "Required[dict[str, Any]]",
-        "progress": "Required[int]",
-        "result": "Required[dict[str, Any] | None]",
-        "source": "Required[str]",
-        "status": "Required[Literal['completed', 'failed', 'pending', 'processing']]",
-        "updatedAt": "Required[str | None]",
-        "videoId": "Required[str | None]",
+        "createdAt": Required["str"],
+        "credits": Required["float"],
+        "durationMs": Required["float | None"],
+        "error": Required["str | None"],
+        "id": Required["str"],
+        "params": Required["dict[str, Any]"],
+        "progress": Required["int"],
+        "result": Required["dict[str, Any] | None"],
+        "source": Required["str"],
+        "status": Required["Literal['completed', 'failed', 'pending', 'processing']"],
+        "updatedAt": Required["str | None"],
+        "videoId": Required["str | None"],
         "links": "list[JobLink]",
     },
     total=False,
@@ -316,30 +320,40 @@ ConsoleJob = TypedDict(
 CreateBulkJobRequest = TypedDict(
     "CreateBulkJobRequest",
     {
-        "source": "Required[Literal['youtube_metadata', 'youtube_transcript', 'youtube_captions', 'youtube_trainability', 'youtube_download']]",
+        "source": Required[
+            "Literal['youtube_metadata', 'youtube_transcript', 'youtube_captions', 'youtube_trainability', 'youtube_download']"
+        ],
         "options": "dict[str, Any]",
-        "callback_url": "str",
+        "callback_url": "str | None",
     },
     total=False,
 )
 
 DataQueryResponse = TypedDict(
     "DataQueryResponse",
-    {"source": "str", "status": "str", "created_at": "str", "results": "list[Any]", "usage": "dict[str, Any]"},
+    {
+        "source": Required["str"],
+        "status": Required["str"],
+        "created_at": Required["str"],
+        "results": Required["list[Any]"],
+        "usage": Required["dict[str, Any]"],
+    },
     total=False,
 )
 
 DataSource = TypedDict(
     "DataSource",
     {
-        "id": "Required[Literal['google_search', 'google_images', 'google_news', 'google_shopping', 'google_videos', 'google_places', 'youtube_search', 'youtube_search_extended', 'youtube_metadata', 'youtube_transcript', 'youtube_captions', 'youtube_trainability', 'youtube_channel', 'youtube_suggestions', 'youtube_download']]",
-        "name": "Required[str]",
-        "category": "Required[Literal['google', 'youtube']]",
-        "product": "Required[Literal['google_search', 'youtube_data', 'youtube_download']]",
-        "modes": "Required[list[Literal['realtime', 'async', 'batch']]]",
-        "inputSchema": "Required[dict[str, Any]]",
-        "estimatedCredits": "Required[float]",
-        "requiresStorageDestination": "Required[bool]",
+        "id": Required[
+            "Literal['google_search', 'google_images', 'google_news', 'google_shopping', 'google_videos', 'google_places', 'youtube_search', 'youtube_search_extended', 'youtube_metadata', 'youtube_transcript', 'youtube_captions', 'youtube_trainability', 'youtube_channel', 'youtube_suggestions', 'youtube_download']"
+        ],
+        "name": Required["str"],
+        "category": Required["Literal['google', 'youtube']"],
+        "product": Required["Literal['google_search', 'youtube_data', 'youtube_download']"],
+        "modes": Required["list[Literal['realtime', 'async', 'batch']]"],
+        "inputSchema": Required["dict[str, Any]"],
+        "estimatedCredits": Required["float"],
+        "requiresStorageDestination": Required["bool"],
     },
     total=False,
 )
@@ -347,10 +361,10 @@ DataSource = TypedDict(
 Health = TypedDict(
     "Health",
     {
-        "status": "Required[Literal['healthy', 'degraded']]",
-        "service": "Required[str]",
-        "version": "Required[str]",
-        "time": "Required[str]",
+        "status": Required["Literal['healthy', 'degraded']"],
+        "service": Required["str"],
+        "version": Required["str"],
+        "time": Required["str"],
     },
     total=False,
 )
@@ -358,9 +372,9 @@ Health = TypedDict(
 JobLink = TypedDict(
     "JobLink",
     {
-        "rel": "Required[Literal['self', 'results', 'content', 'download']]",
-        "href": "Required[str]",
-        "method": "Required[Literal['GET']]",
+        "rel": Required["Literal['self', 'results', 'content', 'download']"],
+        "href": Required["str"],
+        "method": Required["Literal['GET']"],
         "expires_at": "str",
         "filename": "str",
         "content_type": "str",
@@ -371,7 +385,7 @@ JobLink = TypedDict(
 
 Pagination = TypedDict(
     "Pagination",
-    {"nextCursor": "str | None", "previousCursor": "str | None", "hasMore": "Required[bool]", "limit": "Required[int]"},
+    {"nextCursor": "str | None", "previousCursor": "str | None", "hasMore": Required["bool"], "limit": Required["int"]},
     total=False,
 )
 
@@ -379,10 +393,10 @@ PlanCatalog = TypedDict(
     "PlanCatalog",
     {
         "trialOffer": "PublicTrialOffer | None",
-        "data": "Required[list[Plan]]",
-        "currency": "Required[Literal['USD']]",
-        "creditValueUsd": "Required[float]",
-        "billingAvailability": "Required[Literal['available', 'unconfigured', 'unavailable']]",
+        "data": Required["list[Plan]"],
+        "currency": Required["Literal['USD']"],
+        "creditValueUsd": Required["float"],
+        "billingAvailability": Required["Literal['available', 'unconfigured', 'unavailable']"],
         "billingMessage": "str | None",
     },
     total=False,
@@ -391,68 +405,68 @@ PlanCatalog = TypedDict(
 Plan = TypedDict(
     "Plan",
     {
-        "id": "Required[str]",
-        "slug": "Required[str]",
-        "name": "Required[str]",
-        "description": "Required[str]",
-        "includedCredits": "Required[float]",
-        "limits": "Required[PlanLimits]",
-        "prices": "Required[list[PlanPrice]]",
-        "features": "Required[list[str]]",
-        "usagePrices": "Required[PlanUsagePrices]",
+        "id": Required["str"],
+        "slug": Required["str"],
+        "name": Required["str"],
+        "description": Required["str"],
+        "includedCredits": Required["float"],
+        "limits": Required["PlanLimits"],
+        "prices": Required["list[PlanPrice]"],
+        "features": Required["list[str]"],
+        "usagePrices": Required["PlanUsagePrices"],
     },
     total=False,
 )
 
 PlanLimits = TypedDict(
     "PlanLimits",
-    {"concurrency": "Required[int]", "maxBatchSize": "Required[int]", "maxPendingJobs": "Required[int]"},
+    {"concurrency": Required["int"], "maxBatchSize": Required["int"], "maxPendingJobs": Required["int"]},
     total=False,
 )
 
 PlanPrice = TypedDict(
     "PlanPrice",
     {
-        "id": "Required[str]",
-        "currency": "Required[Literal['USD']]",
-        "unitAmount": "Required[int]",
-        "credits": "Required[float]",
-        "type": "Required[Literal['recurring', 'one_time']]",
-        "interval": "Required[Literal['month', 'year', None]]",
+        "id": Required["str"],
+        "currency": Required["Literal['USD']"],
+        "unitAmount": Required["int"],
+        "credits": Required["float"],
+        "type": Required["Literal['recurring', 'one_time']"],
+        "interval": Required["Literal['month', 'year', None]"],
     },
     total=False,
 )
 
 PlanUsagePrices = TypedDict(
     "PlanUsagePrices",
-    {"googlePer1kCents": "Required[int]", "youtubePer1kCents": "Required[int]", "downloadPerTbCents": "Required[int]"},
+    {"googlePer1kCents": Required["int"], "youtubePer1kCents": Required["int"], "downloadPerTbCents": Required["int"]},
     total=False,
 )
 
 Problem = TypedDict(
     "Problem",
     {
-        "type": "Required[str]",
-        "title": "Required[str]",
-        "status": "Required[int]",
-        "code": "Required[str]",
+        "type": Required["str"],
+        "title": Required["str"],
+        "status": Required["int"],
+        "code": Required["str"],
         "detail": "str",
-        "requestId": "Required[str]",
+        "requestId": Required["str"],
         "fieldErrors": "list[FieldError]",
     },
     total=False,
 )
 
 FieldError = TypedDict(
-    "FieldError", {"field": "Required[str]", "code": "Required[str]", "message": "Required[str]"}, total=False
+    "FieldError", {"field": Required["str"], "code": Required["str"], "message": Required["str"]}, total=False
 )
 
 PublicStatus = TypedDict(
     "PublicStatus",
     {
-        "status": "Required[Literal['healthy', 'degraded', 'outage']]",
-        "updatedAt": "Required[str]",
-        "components": "Required[list[PublicStatusComponent]]",
+        "status": Required["Literal['healthy', 'degraded', 'outage']"],
+        "updatedAt": Required["str"],
+        "components": Required["list[PublicStatusComponent]"],
     },
     total=False,
 )
@@ -460,9 +474,9 @@ PublicStatus = TypedDict(
 PublicStatusComponent = TypedDict(
     "PublicStatusComponent",
     {
-        "id": "Required[str]",
-        "name": "Required[str]",
-        "status": "Required[Literal['operational', 'degraded', 'outage']]",
+        "id": Required["str"],
+        "name": Required["str"],
+        "status": Required["Literal['operational', 'degraded', 'outage']"],
     },
     total=False,
 )
@@ -471,104 +485,104 @@ PublicTrialOffer = TypedDict(
     "PublicTrialOffer",
     {
         "maxApiRequests": "int",
-        "googleSearchRequests": "Required[int]",
-        "youtubeDataRequests": "Required[int]",
-        "downloadGigabytes": "Required[float]",
+        "googleSearchRequests": Required["int"],
+        "youtubeDataRequests": Required["int"],
+        "downloadGigabytes": Required["float"],
     },
     total=False,
 )
 
 Query_google_images = TypedDict(
     "Query_google_images",
-    {"source": "Required[Literal['google_images']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['google_images']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_google_news = TypedDict(
     "Query_google_news",
-    {"source": "Required[Literal['google_news']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['google_news']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_google_places = TypedDict(
     "Query_google_places",
-    {"source": "Required[Literal['google_places']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['google_places']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_google_search = TypedDict(
     "Query_google_search",
-    {"source": "Required[Literal['google_search']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['google_search']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_google_shopping = TypedDict(
     "Query_google_shopping",
-    {"source": "Required[Literal['google_shopping']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['google_shopping']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_google_videos = TypedDict(
     "Query_google_videos",
-    {"source": "Required[Literal['google_videos']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['google_videos']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_captions = TypedDict(
     "Query_youtube_captions",
-    {"source": "Required[Literal['youtube_captions']]", "video_id": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_captions']"], "video_id": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_channel = TypedDict(
     "Query_youtube_channel",
-    {"source": "Required[Literal['youtube_channel']]", "handle": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_channel']"], "handle": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_download = TypedDict(
     "Query_youtube_download",
     {
-        "source": "Required[Literal['youtube_download']]",
-        "video_id": "Required[str]",
-        "params": "Required[dict[str, Any]]",
+        "source": Required["Literal['youtube_download']"],
+        "video_id": Required["str"],
+        "params": Required["dict[str, Any]"],
     },
     total=False,
 )
 
 Query_youtube_metadata = TypedDict(
     "Query_youtube_metadata",
-    {"source": "Required[Literal['youtube_metadata']]", "video_id": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_metadata']"], "video_id": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_search = TypedDict(
     "Query_youtube_search",
-    {"source": "Required[Literal['youtube_search']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_search']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_search_extended = TypedDict(
     "Query_youtube_search_extended",
-    {"source": "Required[Literal['youtube_search_extended']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_search_extended']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_suggestions = TypedDict(
     "Query_youtube_suggestions",
-    {"source": "Required[Literal['youtube_suggestions']]", "query": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_suggestions']"], "query": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_trainability = TypedDict(
     "Query_youtube_trainability",
-    {"source": "Required[Literal['youtube_trainability']]", "video_id": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_trainability']"], "video_id": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
 Query_youtube_transcript = TypedDict(
     "Query_youtube_transcript",
-    {"source": "Required[Literal['youtube_transcript']]", "video_id": "Required[str]", "params": "dict[str, Any]"},
+    {"source": Required["Literal['youtube_transcript']"], "video_id": Required["str"], "params": "dict[str, Any]"},
     total=False,
 )
 
@@ -579,10 +593,10 @@ UpdateBulkJobRequest = TypedDict(
 UsageCounts = TypedDict(
     "UsageCounts",
     {
-        "requests": "Required[int]",
-        "completed": "Required[int]",
-        "failed": "Required[int]",
-        "credits": "Required[float]",
+        "requests": Required["int"],
+        "completed": Required["int"],
+        "failed": Required["int"],
+        "credits": Required["float"],
     },
     total=False,
 )
@@ -624,11 +638,11 @@ GooglePlacesParams = TypedDict(
 )
 
 YoutubeSearchParams = TypedDict(
-    "YoutubeSearchParams", {"max_results": "int", "filters": "dict[str, Any] | None"}, total=False
+    "YoutubeSearchParams", {"max_results": "int", "filters": "YouTubeSearchFilters | None"}, total=False
 )
 
 YoutubeSearchExtendedParams = TypedDict(
-    "YoutubeSearchExtendedParams", {"max_results": "int", "filters": "dict[str, Any] | None"}, total=False
+    "YoutubeSearchExtendedParams", {"max_results": "int", "filters": "YouTubeSearchFilters | None"}, total=False
 )
 
 YoutubeMetadataParams = TypedDict(
@@ -658,7 +672,7 @@ YoutubeDownloadParams = TypedDict(
         "output_format": "Literal['mp4', 'webm', 'mkv', 'm4a', 'mp3', 'opus']",
         "start_at": "str",
         "end_at": "str",
-        "storage": "Required[dict[str, Any]]",
+        "storage": Required["StorageConfig"],
     },
     total=False,
 )
@@ -719,10 +733,10 @@ Source = Literal[
 GoogleSearchResponse = TypedDict(
     "GoogleSearchResponse",
     {
-        "source": "Required[Literal['google_search']]",
-        "status": "Required[str]",
+        "source": Required["Literal['google_search']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -731,10 +745,10 @@ GoogleSearchResponse = TypedDict(
 GoogleImagesResponse = TypedDict(
     "GoogleImagesResponse",
     {
-        "source": "Required[Literal['google_images']]",
-        "status": "Required[str]",
+        "source": Required["Literal['google_images']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -743,10 +757,10 @@ GoogleImagesResponse = TypedDict(
 GoogleNewsResponse = TypedDict(
     "GoogleNewsResponse",
     {
-        "source": "Required[Literal['google_news']]",
-        "status": "Required[str]",
+        "source": Required["Literal['google_news']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -755,10 +769,10 @@ GoogleNewsResponse = TypedDict(
 GoogleShoppingResponse = TypedDict(
     "GoogleShoppingResponse",
     {
-        "source": "Required[Literal['google_shopping']]",
-        "status": "Required[str]",
+        "source": Required["Literal['google_shopping']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -767,10 +781,10 @@ GoogleShoppingResponse = TypedDict(
 GoogleVideosResponse = TypedDict(
     "GoogleVideosResponse",
     {
-        "source": "Required[Literal['google_videos']]",
-        "status": "Required[str]",
+        "source": Required["Literal['google_videos']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -779,10 +793,10 @@ GoogleVideosResponse = TypedDict(
 GooglePlacesResponse = TypedDict(
     "GooglePlacesResponse",
     {
-        "source": "Required[Literal['google_places']]",
-        "status": "Required[str]",
+        "source": Required["Literal['google_places']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -791,10 +805,10 @@ GooglePlacesResponse = TypedDict(
 YoutubeSearchResponse = TypedDict(
     "YoutubeSearchResponse",
     {
-        "source": "Required[Literal['youtube_search']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_search']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -803,10 +817,10 @@ YoutubeSearchResponse = TypedDict(
 YoutubeSearchExtendedResponse = TypedDict(
     "YoutubeSearchExtendedResponse",
     {
-        "source": "Required[Literal['youtube_search_extended']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_search_extended']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -815,10 +829,10 @@ YoutubeSearchExtendedResponse = TypedDict(
 YoutubeMetadataResponse = TypedDict(
     "YoutubeMetadataResponse",
     {
-        "source": "Required[Literal['youtube_metadata']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_metadata']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -827,10 +841,10 @@ YoutubeMetadataResponse = TypedDict(
 YoutubeTranscriptResponse = TypedDict(
     "YoutubeTranscriptResponse",
     {
-        "source": "Required[Literal['youtube_transcript']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_transcript']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -839,10 +853,10 @@ YoutubeTranscriptResponse = TypedDict(
 YoutubeCaptionsResponse = TypedDict(
     "YoutubeCaptionsResponse",
     {
-        "source": "Required[Literal['youtube_captions']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_captions']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -851,10 +865,10 @@ YoutubeCaptionsResponse = TypedDict(
 YoutubeTrainabilityResponse = TypedDict(
     "YoutubeTrainabilityResponse",
     {
-        "source": "Required[Literal['youtube_trainability']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_trainability']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -863,10 +877,10 @@ YoutubeTrainabilityResponse = TypedDict(
 YoutubeChannelResponse = TypedDict(
     "YoutubeChannelResponse",
     {
-        "source": "Required[Literal['youtube_channel']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_channel']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[dict[str, Any]]]",
+        "results": Required["list[dict[str, Any]]"],
         "usage": "dict[str, Any]",
     },
     total=False,
@@ -875,11 +889,57 @@ YoutubeChannelResponse = TypedDict(
 YoutubeSuggestionsResponse = TypedDict(
     "YoutubeSuggestionsResponse",
     {
-        "source": "Required[Literal['youtube_suggestions']]",
-        "status": "Required[str]",
+        "source": Required["Literal['youtube_suggestions']"],
+        "status": Required["str"],
         "created_at": "str",
-        "results": "Required[list[list[Any]]]",
+        "results": Required["list[list[Any]]"],
         "usage": "dict[str, Any]",
     },
+    total=False,
+)
+
+
+YouTubeSearchFilters = TypedDict(
+    "YouTubeSearchFilters",
+    {
+        "duration": "Literal['<4', '4-20', '>20']",
+        "sort_by": "Literal['rating', 'relevance', 'view_count', 'upload_date']",
+        "type": "Literal['video', 'channel', 'playlist', 'movie']",
+        "upload_date": "Literal['today', 'last_hour', 'this_week', 'this_month', 'this_year']",
+        "360": "bool",
+        "3d": "bool",
+        "4k": "bool",
+        "creative_commons": "bool",
+        "hd": "bool",
+        "hdr": "bool",
+        "live": "bool",
+        "location": "bool",
+        "purchased": "bool",
+        "subtitles": "bool",
+        "vr180": "bool",
+    },
+    total=False,
+)
+
+StorageConfig = TypedDict(
+    "StorageConfig",
+    {
+        "storage_type": Required["Literal['s3', 's3_compatible', 'oss', 'gcs', 'azure', 'cos', 'bos', 'tos']"],
+        "storage_url": Required["str"],
+        "object_prefix": "str",
+        "access_key": "str",
+        "secret_key": "str",
+        "region": "str",
+        "endpoint_url": "str",
+        "service_account": "dict[str, str]",
+        "account_name": "str",
+        "sas_token": "str",
+    },
+    total=False,
+)
+
+BatchResponse = TypedDict(
+    "BatchResponse",
+    {"queries": Required["list[AsyncSubmission]"], "total_credits": Required["float"], "usage": "dict[str, Any]"},
     total=False,
 )

@@ -1,0 +1,26 @@
+name: Opt-in production API checks
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_paid_calls:
+        description: 'Run billable data queries, a mixed batch, and a small bulk job'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+jobs:
+  live:
+    if: inputs.confirm_paid_calls
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest tests/test_live.py -q
+        env:
+          FLASHDATA_RUN_LIVE: '1'
+          FLASHDATA_LIVE_API_KEY: ${{ secrets.FLASHDATA_LIVE_API_KEY }}

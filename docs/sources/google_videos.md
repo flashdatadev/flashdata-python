@@ -1,82 +1,35 @@
-# Google Videos
+# Google videos
 
-Wire source: `google_videos`. Helper: `client.google.videos`. Required input: `query`.
-Modes: realtime, async, batch. [Product API reference](https://flashdata.dev/docs/sources/google_videos).
+Find video pages from across the web. Entries may include `title`, `link`, `videoUrl`, `duration`, `channel`, and `source`; `link` and `videoUrl` can differ.
 
-## Runnable example
-
-Run from the repository root after setting `FLASHDATA_API_KEY`:
-
-```sh
-python examples/google_videos.py
-```
+## Example
 
 ```python
 from flashdata import FlashData
 
 with FlashData() as client:
-    response = client.google.videos('me at the zoo', gl='us', hl='en', num=10, page=1)
-    print(response)
+    response = client.google.videos("espresso tutorial", num=5, gl="us", hl="en")
+    for payload in response["results"]:
+        for item in payload.get("videos", []):
+            print(item.get("title"), item.get("link") or item.get("videoId") or item.get("address"))
 ```
+
+Run `python examples/google_videos.py espresso tutorial --output artifacts/google_videos.json` from the checkout. Use `--help` for options. The command consumes credits.
 
 ## Parameters
 
-The helper takes the main input and the following source options. Generic query methods
-put options inside `params`. Omitted defaults are resolved by the API, not inserted by
-the SDK. Request options select mode/callback separately from source parameters.
+`query` is required. Source options are keyword arguments, or entries in `params` when using `queries`. Data helpers default to realtime; pass `mode="async"` for background work. `timeout` controls the HTTP request.
 
-| Parameter | Type | Server/catalog default | Meaning / bounds |
-| --- | --- | --- | --- |
-| `gl` | string | Omitted; provider/server behavior | Country code. Set explicitly when needed; omitted values use the search provider’s behavior. Must match the documented format. |
-| `hl` | string | Omitted; provider/server behavior | Interface language. Set explicitly when needed; omitted values use the search provider’s behavior. Must match the documented format. |
-| `location` | string | Omitted; provider/server behavior |  |
-| `num` | integer | Omitted; provider/server behavior | Requested result count. Actual count varies by query and search type; no fixed value is added when omitted. Range: 1–100. |
-| `page` | integer | Omitted; provider/server behavior | Requested page. Set explicitly for pagination; each page is a separate query. Range: 1–100. |
-| `tbs` | string | Omitted; provider/server behavior |  |
-| `autocorrect` | boolean | Omitted; provider/server behavior |  |
+| Option | Type / constraints | Default |
+| --- | --- | --- |
+| `gl` | string; pattern `^[A-Za-z]{2}$` | service default / optional |
+| `hl` | string; pattern `^[A-Za-z0-9-]+$` | service default / optional |
+| `location` | string | service default / optional |
+| `num` | integer; 1–100 | service default / optional |
+| `page` | integer; 1–100 | service default / optional |
+| `tbs` | string | service default / optional |
+| `autocorrect` | boolean | service default / optional |
 
-For `filters`, see the complete property definitions in [source-contract.json](../../source-contract.json).
+## Use at scale
 
-## Response example
-
-Illustrative provider fields; availability varies. The SDK preserves unknown fields.
-
-```json
-{
-  "source": "google_videos",
-  "status": "done",
-  "results": [
-    {
-      "searchParameters": {
-        "q": "me at the zoo",
-        "gl": "us",
-        "hl": "en",
-        "type": "videos",
-        "num": 10,
-        "page": 1,
-        "engine": "google"
-      },
-      "videos": [
-        {
-          "title": "Me at the zoo",
-          "link": "https://www.youtube.com/watch?v=jNQXAC9IVRw&vl=en",
-          "snippet": "Microplastics are accumulating in human brains at an alarming rate https://www.youtube.com/watch?v=0PT5c1z3LL8 \u201cNanoplastics and Human ...",
-          "imageUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNoybJBMfqr7vwH-saySvflZreMzBKZDBjW_zQMrY81E-xQZBBMzVuRw&s",
-          "videoUrl": "https://encrypted-vtbn0.gstatic.com/video?q=tbn:ANd9GcS8uZHJMduuLjzsxqOtyhx8VWeRlui2Fo0sUg",
-          "duration": "0:19",
-          "source": "YouTube",
-          "channel": "jawed",
-          "date": "Apr 23, 2005",
-          "position": 1
-        }
-      ]
-    }
-  ],
-  "usage": {
-    "credits": 0.02
-  },
-  "created_at": "2026-09-16T07:41:45.419Z"
-}
-```
-
-[Jobs and results](../jobs.md) · [Errors](../errors.md) · [Source index](index.md)
+Use [bounded Google pagination](../pagination.md) for multiple pages. Each page is a separately charged request. All sources support [background and batch queries](../jobs.md). Read [errors and recovery](../errors.md) before adding application retries.

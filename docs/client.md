@@ -1,27 +1,73 @@
-# Client configuration and responses
+# Client configuration and asyncio
 
-`FlashData(api_key=None, *, data_url="https://data.flashdata.dev", management_url="https://api.flashdata.dev", timeout=120, max_response_bytes=67108864, transport=None, storage_transport=None)`
+## Reuse and close clients
 
-`AsyncFlashData` has the same options. Timeouts are seconds. Use context managers to
-close both HTTP pools, or call `close()` / `await aclose()`. HTTPX transports can be
-injected for tests or a custom networking implementation. A client must stay within
-its creating process and an async client within its event loop.
+```python
+from flashdata import FlashData
 
-`flashdata.types` contains TypedDict request/response types and source parameter types.
-Wire field names remain intact, including `from` in usage responses; the Python usage
-method accepts `from_` and sends `from`.
+with FlashData(timeout=120, max_response_bytes=64 * 1024 * 1024) as client:
+    first = client.google.search("coffee", timeout=30)
+    second = client.google.news("coffee", timeout=60)
+```
 
-Configured API URLs are HTTPS origins without paths, credentials, query strings or
-fragments. Loopback HTTP is supported for local development. Do not append `/v1`, `/v2`
-or `/mcp`; the SDK adds the appropriate route. Custom origins receive your API key.
+`timeout` is a positive number of seconds applied to HTTPX's connect/read/write/pool
+operations. It is not a wall-clock cap for the entire paid job. Each request method can
+override it. `jobs.wait(timeout=...)` and `bulk.wait(timeout=...)` instead bound polling;
+they do not cancel server work. Results and upload helpers also accept request timeouts.
 
-Query methods return the original JSON envelope. Account reads return their original
-JSON object. Job and bulk `get`/control methods unwrap the outer `job` field. A failed
-HTTP response raises a structured exception. A failed item inside a successful batch
-stays in the batch result; inspect every item.
+The default maximum response size is 64 MiB after HTTP content decoding. Bulk NDJSON
+decoding applies the same total limit and a configurable `max_line_bytes` limit (16 MiB
+by default). Increase these bounds deliberately for larger metadata or transcript parts.
+Part iterators buffer one bounded part; they do not stream a whole dataset into memory.
 
-The SDK validates source input shape without injecting catalog defaults. Server-side
-admission, provider-specific storage rules, media format compatibility and permissions
-remain enforced by FlashData. Public discovery requests omit the API key. Generic query
-methods use the checked-in source contract and reject unknown fields until the SDK is
-updated for a newer contract.
+Use `client.close()` if you cannot use `with`. Async clients use `await client.aclose()`.
+A sync client can be reused between threads; do not close it while requests are in flight.
+Create an async client inside the event loop that will use it, and do not share it across
+event loops. Canceling a coroutine does not cancel an accepted server job.
+
+## Async requests
+
+```python
+import asyncio
+from flashdata import AsyncFlashData
+
+async def main():
+    async with AsyncFlashData() as client:
+        gate = asyncio.Semaphore(3)
+
+        async def search(query):
+            async with gate:
+                return await client.google.search(query, num=5)
+
+        responses = await asyncio.gather(*(search(q) for q in ["coffee", "tea"]))
+        print([r["usage"]["credits"] for r in responses])
+
+asyncio.run(main())
+```
+
+Set concurrency from your plan and workload. Account limits are shared by all keys and
+do not report currently available worker slots. Avoid unbounded task creation.
+
+## Proxies, TLS and environments
+
+```python
+from flashdata import FlashData
+
+with FlashData(proxy="http://localhost:8080", trust_env=False) as client:
+    print(client.public.health())
+```
+
+`proxy` configures the HTTP proxy for API and signed-storage requests. `trust_env=True`
+(default) honors HTTPX proxy and certificate environment settings. `verify` accepts a
+boolean or `ssl.SSLContext`; use a trusted CA context for private corporate certificates.
+Do not place proxy credentials in logs. API and storage use separate cookie/connection pools.
+The authenticated result-storage origin is cached for the client's lifetime to avoid an
+extra discovery call for every result part. Create a new client if that origin changes.
+
+For local testing, `data_url` and `management_url` accept HTTPS origins, or HTTP on
+loopback only. They must not include a path such as `/v2`. Pass `httpx.MockTransport`
+through `transport`, or use `storage_transport` to isolate storage fixtures. See the
+credential-free `examples/offline.py` example.
+
+There are no automatic retries or implicit billable defaults. Source parameters that
+are omitted use the service's current defaults. Both clients validate inputs before I/O.

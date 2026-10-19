@@ -1,49 +1,73 @@
-# Bulk YouTube collections
+# Build a YouTube dataset with bulk jobs
 
-Bulk accepts `youtube_metadata`, `youtube_transcript`, `youtube_captions`,
-`youtube_trainability` and `youtube_download`. Search, channels and suggestions use
-individual queries or regular batches. A bulk input is a non-empty UTF-8 text file of
-one 11-character video ID per line, up to 2 GiB. Uploads are streamed in 64 KiB chunks.
+Bulk jobs process a UTF-8 file containing one video ID per line. Supported sources:
+`youtube_metadata`, `youtube_transcript`, `youtube_captions`, `youtube_trainability`,
+and `youtube_download`. File uploads support 1 byte to 2 GiB. A bulk job uses one source
+and one set of options for all IDs; use a [mixed batch](jobs.md) for different queries.
 
-1. Create a collection with a source and shared options. Persist `created.job.id`.
-2. Upload the file to the returned descriptor using the upload helper. The presigned
-   upload URL lasts 15 minutes. It receives the declared content type and file size.
-3. Start the existing collection by ID. Creating/uploading alone does not start queries.
-4. Read progress or explicitly wait. A paused state raises `JobPausedError` and requires
-   a deliberate update/resume; the SDK never replenishes Credits or resumes itself.
-5. Retrieve the manifest and read its `parts[].number` with the part/row methods.
+## Create, upload, start, export
+
+Create a local `video-ids.txt` file containing, for example, `dQw4w9WgXcQ` on one line.
+Then run:
 
 ```python
+import json
+from pathlib import Path
 from flashdata import FlashData
+
 with FlashData() as client:
-    created = client.bulk.create({"source": "youtube_metadata", "options": {"include_formats": False}})
-    bulk_id = created["job"]["id"]
-    print(bulk_id)
-    client.bulk.upload_file(created, "video-ids.txt")
+    receipt = client.bulk.create({"source": "youtube_metadata",
+                                  "options": {"include_formats": False}})
+    bulk_id = receipt["job"]["id"]
+    print("Save this ID:", bulk_id, flush=True)
+    client.bulk.upload_file(receipt, Path("video-ids.txt"))
     client.bulk.start(bulk_id)
     client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
-    manifest = client.bulk.manifest(bulk_id)
-    for part in manifest["parts"]:
-        for row in client.bulk.iter_rows(bulk_id, part["number"]):
-            print(row)
+    with Path("dataset.ndjson").open("w", encoding="utf-8") as output:
+        for row in client.bulk.rows(bulk_id):
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
 ```
 
-The async client supports `await upload_file(...)` and `async for row in iter_rows(...)`.
+Creation returns a job plus a short-lived signed PUT upload descriptor (15 minutes).
+`upload_file` streams the input file with the required content type and length; it does
+not start the job. If upload fails, keep the ID and inspect its state. Retry the same
+upload only while its descriptor is valid. An expired input upload needs a new draft;
+cancel the unused draft before creating its replacement. Re-creation is not automatic.
+Do not log the upload descriptor or signed URLs.
 
-`pause`, `resume`, `update` and `cancel` operate on the same bulk ID. Cancellation stops
-new admission; already-admitted child jobs may finish and retain their charges. Updates
-affect future admissions and may receive 409 while a coordinator slice finishes. After
-all IDs are scanned, paused data collections accept only supported credential updates.
-Set `callback_url` to null to remove a bulk completion callback.
+Bulk options use `options`, rather than individual query `params`. Metadata accepts
+`include_formats` and `include_chapters`; transcript/captions accept `language` and `auto`;
+license checks have no data options. Data sources may also set `result_storage` for
+cloud delivery. Downloads require `options.storage`. See [storage](storage.md).
 
-Each result row preserves its input index and completed/failed/invalid outcome. A
-completed collection can include failed rows. The manifest and parts expire 24 hours
-after collection completion. Read one part at a time: the SDK bounds both transferred
-and decompressed bytes by the configured response limit and caps each NDJSON line at
-1 MiB. It does not load every collection part into memory together. The raw part method
-returns bytes, which may be gzip-compressed; row iteration detects gzip automatically.
+## Progress and controls
 
-Data collections can specify `options.result_storage` to deliver result parts to customer
-storage. Downloads require `options.storage` instead. Storage type/credentials use the
-[same destination schema](storage.md). Default result prefixes use the UTC creation date.
-Customer-delivered manifests and internal signed results have separate storage retention.
+`get(id)` returns a record with counts, status, pause reason and delivery status.
+Typical states are `awaiting_upload`, `running`, `paused`, `finalizing`, `completed`,
+`failed`, and `cancelled`. Counts include accepted, completed, failed, invalid, and results.
+A completed bulk can contain failed rows; inspect counts and each row's status.
+
+- `pause(id)` requests a pause for running work; already active items may finish.
+- `resume(id)` resumes a paused job once its blocking condition is resolved.
+- `update(id, {"options": ...})` updates settings allowed in its current state.
+  Storage credentials can be patched without reconstructing the whole destination.
+- `cancel(id)` cancels remaining work; completed work may already be charged.
+
+`wait` stops with `JobPausedError` on a pause and `JobFailedError` on failure/cancellation.
+It does not resume or cancel work automatically. Download billing uses actual delivered
+bytes; data bulk jobs are billed per admitted item under your plan's current pricing.
+
+## Read results and list jobs
+
+`manifest(id)` retrieves counts, expiry, and ordered part descriptors. `part(id, number)`
+returns bounded bytes; `iter_rows(id, number)` decodes a gzip/NDJSON part. `rows(id)` walks
+manifest parts in order and yields their JSON objects. It uses constructed API routes,
+not arbitrary URLs supplied in a manifest. Parts are zero based. Result files expire
+24 hours after completion; export them promptly.
+
+`list(cursor=..., limit=20)` returns `data` and `pagination`. `iter_jobs(max_pages=..., limit=...)`
+walks a bounded number of cursor pages. Both have async equivalents; use `async for`
+for async job and row iterators.
+
+The runnable [bulk example](examples.md) supports submitting and resuming an
+existing ID, so a process restart does not require re-uploading or re-submitting work.

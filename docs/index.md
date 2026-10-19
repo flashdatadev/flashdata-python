@@ -1,17 +1,42 @@
-# Documentation
+# FlashData Python SDK
 
-- [Getting started](getting-started.md)
-- [Client configuration and response types](client.md)
-- [All Google and YouTube sources](sources/index.md)
-- [Background queries, batches and job results](jobs.md)
-- [Pagination](pagination.md)
-- [Bulk files, controls and result parts](bulk.md)
-- [Cloud storage](storage.md)
-- [Account and public discovery](account.md)
-- [Errors, timeouts and recovery](errors.md)
-- [API coverage](api-reference.md)
-- [Architecture and SerpApi reference study](architecture.md)
-- [Executable examples](../examples/README.md)
-- [Contributing and local checks](../CONTRIBUTING.md)
-- [Release preparation](release.md)
-- [Local validation](validation.md)
+Build applications with Google search and YouTube data using Python 3.10+.
+Choose a source, make a request, and work with ordinary dictionaries. Both sync and
+async clients cover realtime queries, background jobs, batch submission, and bulk files.
+
+Start with [installation and your first request](getting-started.md), or choose a
+[source guide](sources/index.md). Each source has a runnable example and a response
+field guide. [API reference](api-reference.md) lists all resource methods.
+
+```{toctree}
+:caption: Start here
+:maxdepth: 2
+
+getting-started
+sources/index
+```
+
+```{toctree}
+:caption: Build applications
+:maxdepth: 1
+
+client
+jobs
+pagination
+bulk
+storage
+account
+errors
+recipes
+examples
+api-reference
+```
+
+```{toctree}
+:caption: Project
+:maxdepth: 1
+
+architecture
+validation
+release
+```

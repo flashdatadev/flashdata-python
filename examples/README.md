@@ -1,35 +1,73 @@
-# Executable examples
+# Runnable examples
 
-Run commands from the repository root after installation/build. Source examples perform
-one paid query, except the offline and account examples. Download reads a private file
-named by `FLASHDATA_STORAGE_FILE`. No example creates an account or purchases Credits.
+Install from the repository root with `python -m pip install .`. Set `FLASHDATA_API_KEY`
+in your environment. Live examples consume credits; `account.py` uses free account reads
+and `offline.py` uses a mock transport. Use `--help` to see arguments without making a request.
+The SDK does not load `.env` files automatically.
 
-| Example | Purpose |
+Every script has a `main` guard, accepts command-line inputs, and returns a nonzero exit
+status on failure. Most support `--output artifacts/name.json` to save the complete response
+while printing useful fields. Exports and credentials should stay outside version control.
+
+## Search sources
+
+| Command | Output |
 | --- | --- |
-| offline | Simulated Google result; no key or network |
-| account | Free access, balance, pricing and limits reads |
-| async_query | Background submission, ID persistence, explicit wait, result retrieval |
-| batch | Mixed-source batch, preserving per-item results |
-| pagination | At most two paid Google pages, stopping on empty results |
-| bulk | Create, upload and start a metadata collection; prints ID without waiting |
-| async_client | Python's native async client (Python repository only) |
+| `python examples/google_search.py "coffee roasters"` | Title, URL, snippet, upstream position |
+| `python examples/google_images.py "coffee beans"` | Image URL and source page |
+| `python examples/google_news.py "renewable energy"` | Headline, publisher, date, article URL |
+| `python examples/google_shopping.py "mechanical keyboard"` | Listing, price string, merchant, URL |
+| `python examples/google_videos.py "espresso tutorial"` | Video page, duration, source |
+| `python examples/google_places.py "coffee shops in Seattle"` | Business, address, rating, website |
 
-- `google_search.py`: [guide](../docs/sources/google_search.md).
-- `google_images.py`: [guide](../docs/sources/google_images.md).
-- `google_news.py`: [guide](../docs/sources/google_news.md).
-- `google_shopping.py`: [guide](../docs/sources/google_shopping.md).
-- `google_videos.py`: [guide](../docs/sources/google_videos.md).
-- `google_places.py`: [guide](../docs/sources/google_places.md).
-- `youtube_search.py`: [guide](../docs/sources/youtube_search.md).
-- `youtube_search_extended.py`: [guide](../docs/sources/youtube_search_extended.md).
-- `youtube_metadata.py`: [guide](../docs/sources/youtube_metadata.md).
-- `youtube_transcript.py`: [guide](../docs/sources/youtube_transcript.md).
-- `youtube_captions.py`: [guide](../docs/sources/youtube_captions.md).
-- `youtube_trainability.py`: [guide](../docs/sources/youtube_trainability.md).
-- `youtube_channel.py`: [guide](../docs/sources/youtube_channel.md).
-- `youtube_suggestions.py`: [guide](../docs/sources/youtube_suggestions.md).
-- `youtube_download.py`: [guide](../docs/sources/youtube_download.md).
+All accept `--num`, `--page`, `--gl`, and `--hl`. Request one page at a time or use the
+CSV recipe for a bounded set. Optional upstream fields can be empty.
 
-The tests execute all source examples against fake transports. Local fixture data is
-illustrative; it does not prove upstream availability. To run source examples live,
-provide your own key and run the chosen script explicitly.
+## YouTube sources
+
+| Command | Output |
+| --- | --- |
+| `python examples/youtube_search.py "python tutorial" --max-results 5` | Video title, channel, watch URL |
+| `python examples/youtube_search_extended.py "python tutorial" --max-results 30` | A larger discovery set (up to 700 requested) |
+| `python examples/youtube_metadata.py dQw4w9WgXcQ` | Title, channel, duration, caption languages |
+| `python examples/youtube_transcript.py dQw4w9WgXcQ --language en` | Timestamped track segments |
+| `python examples/youtube_captions.py dQw4w9WgXcQ --language en` | Uploaded caption segments |
+| `python examples/youtube_trainability.py dQw4w9WgXcQ` | Detected license labels |
+| `python examples/youtube_channel.py @freecodecamp --video-limit 5` | Channel and recent videos |
+| `python examples/youtube_suggestions.py python` | Autocomplete suggestions |
+| `python examples/youtube_download.py VIDEO_ID --storage-file private-storage.json --wait` | Saved job ID and delivery completion |
+
+The transcript and captions CLI examples select uploaded English captions for the default
+video so both are reproducible. Add `--auto` to select automatic captions when available.
+The transcript SDK method itself defaults to `auto=True`. Missing tracks are errors;
+there is no automatic transcription or translation. License labels are not a grant of rights.
+
+The download script requires a real private cloud destination JSON file or
+`FLASHDATA_STORAGE_FILE`; see the storage guide in `docs/storage.md`. It submits one paid
+download and waits only when `--wait` is passed. Keep destination credentials private.
+
+## Workflows
+
+```sh
+python examples/offline.py
+python examples/account.py --output artifacts/account.json
+python examples/async_client.py coffee tea --concurrency 2
+python examples/async_query.py coffee --output artifacts/job.json
+python examples/batch.py --wait --output artifacts/batch.json
+python examples/search_to_csv.py coffee --max-pages 2 --output artifacts/search.csv
+python examples/bulk.py examples/video-ids.example.txt --output artifacts/videos.ndjson
+```
+
+`async_client.py` demonstrates Python asyncio. `async_query.py` demonstrates a server-side
+background job using the synchronous client. Both approaches also work together.
+
+Save the job/bulk ID printed before waiting. Resume after a polling deadline or process restart:
+
+```sh
+python examples/async_query.py --job-id job_YOUR_SAVED_ID --output artifacts/job.json
+python examples/bulk.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/videos.ndjson
+```
+
+Resume commands read existing work instead of submitting it again. A bulk export can contain
+failed rows; check counts and row status. A script's nonzero exit code signals an error or
+incomplete dataset. Inspect saved output before deciding which items to submit again.

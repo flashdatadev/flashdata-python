@@ -30,6 +30,7 @@ class APIError(FlashDataError):
         self.request_id = request_id
         self.retry_after = retry_after
         self.body = body
+        self.field_errors = body.get("fieldErrors", []) if isinstance(body, dict) else []
 
 
 class ConnectionError(FlashDataError):

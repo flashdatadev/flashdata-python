@@ -1,81 +1,35 @@
-# Google Shopping
+# Google shopping
 
-Wire source: `google_shopping`. Helper: `client.google.shopping`. Required input: `query`.
-Modes: realtime, async, batch. [Product API reference](https://flashdata.dev/docs/sources/google_shopping).
+Compare listings by `title`, merchant `source`, `price`, and `link`. Prices are display strings and can have different currencies; normalize deliberately for numeric analysis.
 
-## Runnable example
-
-Run from the repository root after setting `FLASHDATA_API_KEY`:
-
-```sh
-python examples/google_shopping.py
-```
+## Example
 
 ```python
 from flashdata import FlashData
 
 with FlashData() as client:
-    response = client.google.shopping('mechanical keyboard', gl='us', hl='en', num=10, page=1)
-    print(response)
+    response = client.google.shopping("mechanical keyboard", num=5, gl="us", hl="en")
+    for payload in response["results"]:
+        for item in payload.get("shopping", []):
+            print(item.get("title"), item.get("link") or item.get("videoId") or item.get("address"))
 ```
+
+Run `python examples/google_shopping.py mechanical keyboard --output artifacts/google_shopping.json` from the checkout. Use `--help` for options. The command consumes credits.
 
 ## Parameters
 
-The helper takes the main input and the following source options. Generic query methods
-put options inside `params`. Omitted defaults are resolved by the API, not inserted by
-the SDK. Request options select mode/callback separately from source parameters.
+`query` is required. Source options are keyword arguments, or entries in `params` when using `queries`. Data helpers default to realtime; pass `mode="async"` for background work. `timeout` controls the HTTP request.
 
-| Parameter | Type | Server/catalog default | Meaning / bounds |
-| --- | --- | --- | --- |
-| `gl` | string | Omitted; provider/server behavior | Country code. Set explicitly when needed; omitted values use the search provider’s behavior. Must match the documented format. |
-| `hl` | string | Omitted; provider/server behavior | Interface language. Set explicitly when needed; omitted values use the search provider’s behavior. Must match the documented format. |
-| `location` | string | Omitted; provider/server behavior |  |
-| `num` | integer | Omitted; provider/server behavior | Requested result count. Actual count varies by query and search type; no fixed value is added when omitted. Range: 1–100. |
-| `page` | integer | Omitted; provider/server behavior | Requested page. Set explicitly for pagination; each page is a separate query. Range: 1–100. |
-| `tbs` | string | Omitted; provider/server behavior |  |
-| `autocorrect` | boolean | Omitted; provider/server behavior |  |
+| Option | Type / constraints | Default |
+| --- | --- | --- |
+| `gl` | string; pattern `^[A-Za-z]{2}$` | service default / optional |
+| `hl` | string; pattern `^[A-Za-z0-9-]+$` | service default / optional |
+| `location` | string | service default / optional |
+| `num` | integer; 1–100 | service default / optional |
+| `page` | integer; 1–100 | service default / optional |
+| `tbs` | string | service default / optional |
+| `autocorrect` | boolean | service default / optional |
 
-For `filters`, see the complete property definitions in [source-contract.json](../../source-contract.json).
+## Use at scale
 
-## Response example
-
-Illustrative provider fields; availability varies. The SDK preserves unknown fields.
-
-```json
-{
-  "source": "google_shopping",
-  "status": "done",
-  "results": [
-    {
-      "searchParameters": {
-        "q": "mechanical keyboard",
-        "gl": "us",
-        "hl": "en",
-        "type": "shopping",
-        "num": 40,
-        "page": 1,
-        "engine": "google"
-      },
-      "shopping": [
-        {
-          "title": "Keychron V1 Wired Custom Mechanical Keyboard barebone version 75% layout QMK/via programmable macro with Hot-swappable suppo",
-          "source": "Keychron.com",
-          "link": "https://www.google.com/search?ibp=oshop&q=mechanical+keyboard&prds=localAnnotatedOfferId:1,catalogid:4646494883927026855,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
-          "price": "$69.99",
-          "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTmFH2V5iUcuY9yRuK1-vTVeyU3DJLVq_MomMlGTQnfiyxxBIB9ISDiXNuhtyWOBoDJNM1rCNvc07jUU4l1bilumAMkF8aHZ07__xTWQQw1dPRD8xAGCvk4",
-          "rating": 4.8,
-          "ratingCount": 336,
-          "productId": "4646494883927026855",
-          "position": 1
-        }
-      ]
-    }
-  ],
-  "usage": {
-    "credits": 0.02
-  },
-  "created_at": "2026-09-16T07:41:40.048Z"
-}
-```
-
-[Jobs and results](../jobs.md) · [Errors](../errors.md) · [Source index](index.md)
+Use [bounded Google pagination](../pagination.md) for multiple pages. Each page is a separately charged request. All sources support [background and batch queries](../jobs.md). Read [errors and recovery](../errors.md) before adding application retries.

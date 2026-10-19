@@ -1,73 +1,29 @@
-# Youtube Channel
+# YouTube channels
 
-Wire source: `youtube_channel`. Helper: `client.youtube.channel`. Required input: `handle`.
-Modes: realtime, async, batch. [Product API reference](https://flashdata.dev/docs/sources/youtube_channel).
+Read channel identity, description, subscriber/view counts, and a bounded `videos` list. Pass a handle such as `@freecodecamp`, and set `video_limit` to control the number of recent entries.
 
-## Runnable example
-
-Run from the repository root after setting `FLASHDATA_API_KEY`:
-
-```sh
-python examples/youtube_channel.py
-```
+## Example
 
 ```python
 from flashdata import FlashData
 
 with FlashData() as client:
-    response = client.youtube.channel('@jawed', video_limit=10)
-    print(response)
+    response = client.youtube.channel("@freecodecamp", video_limit=5)
+    for payload in response["results"]:
+        for item in payload.get("videos", []):
+            print(item.get("title"), item.get("link") or item.get("videoId") or item.get("address"))
 ```
+
+Run `python examples/youtube_channel.py @freecodecamp --output artifacts/youtube_channel.json` from the checkout. Use `--help` for options. The command consumes credits.
 
 ## Parameters
 
-The helper takes the main input and the following source options. Generic query methods
-put options inside `params`. Omitted defaults are resolved by the API, not inserted by
-the SDK. Request options select mode/callback separately from source parameters.
+`handle` is required. Source options are keyword arguments, or entries in `params` when using `queries`. Data helpers default to realtime; pass `mode="async"` for background work. `timeout` controls the HTTP request.
 
-| Parameter | Type | Server/catalog default | Meaning / bounds |
-| --- | --- | --- | --- |
-| `video_limit` | integer | 20 |  Range: 1–100. |
+| Option | Type / constraints | Default |
+| --- | --- | --- |
+| `video_limit` | integer; 1–100 | 20 |
 
-For `filters`, see the complete property definitions in [source-contract.json](../../source-contract.json).
+## Use at scale
 
-## Response example
-
-Illustrative provider fields; availability varies. The SDK preserves unknown fields.
-
-```json
-{
-  "source": "youtube_channel",
-  "status": "done",
-  "results": [
-    {
-      "channelId": "UC4QobU6STFB0P71PMvOGN5A",
-      "channelHandle": "@jawed",
-      "name": "jawed",
-      "description": "",
-      "subscriberCount": 6580000,
-      "videoCount": 1,
-      "viewCount": null,
-      "avatarUrl": "https://yt3.googleusercontent.com/uI3VE4PVqvCy0xnWLqMJnEzyBUm3T8VHOCp4ee-1RxdHqKXCdUE_qXYQnpf9AfuEoIPactVyDhM=s0",
-      "bannerUrl": null,
-      "channelUrl": "https://www.youtube.com/channel/UC4QobU6STFB0P71PMvOGN5A",
-      "videos": [
-        {
-          "videoId": "jNQXAC9IVRw",
-          "title": "Me at the zoo",
-          "duration": 19,
-          "viewCount": 431000000,
-          "uploadDate": null,
-          "thumbnail": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg?sqp=-oaymwE2COADEI4CSFXyq4qpAygIARUAAIhCGAFwAcABBvABAfgBvgKAAvABigIMCAAQARhVIFkoZTAP&rs=AOn4CLDkGJrAGBspJ5G6u9b7tutsHbloEg"
-        }
-      ]
-    }
-  ],
-  "usage": {
-    "credits": 0.01
-  },
-  "created_at": "2026-09-16T07:41:47.218Z"
-}
-```
-
-[Jobs and results](../jobs.md) · [Errors](../errors.md) · [Source index](index.md)
+All sources support [background and batch queries](../jobs.md). Read [errors and recovery](../errors.md) before adding application retries.

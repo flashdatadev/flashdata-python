@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import copy
+import gzip
+import io
+import ipaddress
 import json
 import math
 import re
+import zlib
 from importlib.resources import files
 from typing import Any
 from urllib.parse import urlsplit
@@ -39,7 +43,10 @@ def integer(value: int, name: str, minimum: int, maximum: int) -> int:
 def origin(value: str) -> str:
     if not isinstance(value, str):
         raise ValidationError("API URLs must be HTTPS origins, or loopback HTTP origins.")
-    p = urlsplit(value)
+    try:
+        p = urlsplit(value)
+    except ValueError:
+        raise ValidationError("Invalid API URL.") from None
     if (
         p.scheme not in ("https", "http")
         or not p.hostname
@@ -64,11 +71,11 @@ def origin(value: str) -> str:
 def signed_url(url: str, expected: str | None) -> str:
     if not isinstance(url, str) or not isinstance(expected, str):
         raise ProtocolError("The API has not advertised a signed-storage origin.")
-    p = urlsplit(url)
     try:
+        p = urlsplit(url)
         actual = origin(f"{p.scheme}://{p.netloc}")
         advertised = origin(expected)
-    except ValidationError:
+    except (ValidationError, ValueError):
         raise ProtocolError("Invalid signed-storage origin.") from None
     if p.username or p.password or p.fragment or actual != advertised:
         raise ProtocolError("Signed URL does not match the authenticated storage origin.")
@@ -118,14 +125,43 @@ def api_error(response: Any, body: bytes, secrets: tuple[str, ...]) -> APIError:
         response.status_code,
         message if isinstance(message, str) else f"HTTP {response.status_code}.",
         code=data.get("code") if isinstance(data, dict) else None,
-        request_id=response.headers.get("x-request-id"),
-        retry_after=response.headers.get("retry-after"),
+        request_id=response.headers.get("x-request-id") or (data.get("requestId") if isinstance(data, dict) else None),
+        retry_after=response.headers.get("retry-after")
+        or (str(data["retry_after"]) if isinstance(data, dict) and data.get("retry_after") is not None else None),
         body=data,
     )
 
 
+def validate_callback(callback: Any) -> None:
+    if callback is None or callback == "":
+        return
+    message = "callback_url must be a public HTTPS URL on port 443."
+    try:
+        if not isinstance(callback, str) or len(callback) > 2048:
+            raise ValueError
+        p = urlsplit(callback)
+        if (
+            p.scheme != "https"
+            or not p.hostname
+            or "." not in p.hostname
+            or p.username
+            or p.password
+            or p.fragment
+            or p.port not in (None, 443)
+        ):
+            raise ValueError
+        try:
+            address = ipaddress.ip_address(p.hostname)
+        except ValueError:
+            address = None
+        if address is not None and not address.is_global:
+            raise ValueError
+    except ValueError:
+        raise ValidationError(message) from None
+
+
 def validate_query(value: Any, *, async_mode: bool = False) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("source") not in SCHEMAS:
+    if not isinstance(value, dict) or not isinstance(value.get("source"), str) or value["source"] not in SCHEMAS:
         raise ValidationError("Choose a supported source and provide a query object.")
     data = copy.deepcopy(value)
     source = data["source"]
@@ -139,12 +175,24 @@ def validate_query(value: Any, *, async_mode: bool = False) -> dict[str, Any]:
     if error:
         path = ".".join(str(part) for part in error.absolute_path) or "query"
         # ValidationError.message may contain credentials or whole input objects.
-        raise ValidationError(f"Invalid {path}: violates {error.validator}.")
-    callback = data.get("callback_url")
-    if callback:
-        p = urlsplit(callback)
-        if p.scheme != "https" or not p.hostname or p.username or p.password or p.fragment or p.port not in (None, 443):
-            raise ValidationError("callback_url must be a public HTTPS URL on port 443.")
+        constraint = error.validator
+        expected = error.validator_value
+        hint = {
+            "minimum": f"must be at least {expected}",
+            "maximum": f"must be at most {expected}",
+            "type": f"must have type {expected}",
+            "minLength": f"must contain at least {expected} characters",
+            "maxLength": f"must contain at most {expected} characters",
+            "required": "a required field is missing",
+            "additionalProperties": "contains unsupported fields",
+            "enum": f"must be one of {expected}",
+            "pattern": "has an invalid format",
+        }.get(constraint, f"violates {constraint}")
+        raise ValidationError(f"Invalid {path}: {hint}.")
+    validate_callback(data.get("callback_url"))
+    for field in ("query", "handle", "video_id"):
+        if field in data and not data[field].strip():
+            raise ValidationError(f"{field} must not be blank.")
     return data
 
 
@@ -160,8 +208,21 @@ def bulk_input(value: Any, *, partial: bool = False) -> dict[str, Any]:
         raise ValidationError("Bulk supports metadata, transcript, captions, license checks and downloads.")
     if "options" in data and not isinstance(data["options"], dict):
         raise ValidationError("Bulk options must be an object.")
-    if "callback_url" in data and data["callback_url"] is not None and not isinstance(data["callback_url"], str):
-        raise ValidationError("callback_url must be a string or null.")
+    try:
+        json.dumps(data, allow_nan=False)
+    except (TypeError, ValueError):
+        raise ValidationError("Bulk request values must be valid JSON.") from None
+    validate_callback(data.get("callback_url"))
+    if not partial:
+        options = copy.deepcopy(data.get("options", {}))
+        result_storage = options.pop("result_storage", None)
+        if result_storage is not None:
+            if data["source"] == "youtube_download" or not isinstance(result_storage, dict):
+                raise ValidationError("result_storage applies to bulk data sources and must be an object.")
+            storage_schema = SCHEMAS["youtube_download"]["properties"]["params"]["properties"]["storage"]
+            if not Draft202012Validator(storage_schema).is_valid(result_storage):
+                raise ValidationError("Invalid options.result_storage configuration.")
+        validate_query({"source": data["source"], "video_id": "dQw4w9WgXcQ", "params": options}, async_mode=True)
     if not partial and data["source"] == "youtube_download" and not data.get("options", {}).get("storage"):
         raise ValidationError("Bulk downloads require options.storage.")
     return data
@@ -175,3 +236,30 @@ def decode_json(body: bytes) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ProtocolError("Expected a JSON object response.")
     return value
+
+
+def result_rows(raw: bytes, max_bytes: int, max_line_bytes: int):
+    """Read a bounded NDJSON part, allowing HTTP stacks that already decoded gzip."""
+    stream = gzip.GzipFile(fileobj=io.BytesIO(raw)) if raw.startswith(b"\x1f\x8b") else io.BytesIO(raw)
+    try:
+        with stream:
+            total = 0
+            while True:
+                line = stream.readline(max_line_bytes + 1)
+                if not line:
+                    break
+                total += len(line)
+                if len(line) > max_line_bytes or total > max_bytes:
+                    from .errors import ResponseTooLargeError
+
+                    raise ResponseTooLargeError("Decompressed result part exceeds configured limits.")
+                if line.strip():
+                    yield decode_json(line)
+    except (OSError, EOFError, zlib.error):
+        raise ProtocolError("Invalid or truncated gzip result part.") from None
+
+
+def job_record(value: Any) -> Any:
+    if not isinstance(value, dict) or not isinstance(value.get("job"), dict):
+        raise ProtocolError("Expected a job response containing a job object.")
+    return value["job"]
