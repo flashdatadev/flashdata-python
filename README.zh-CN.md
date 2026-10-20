@@ -22,13 +22,13 @@
 
 ## 安装
 
-在本仓库的源码目录中执行：
-
 ```sh
-python -m pip install .
+pip install flashdata
 ```
 
-当前版本通过源码安装。正式使用 FlashData 官方账号发布后，会补充 PyPI 安装说明。
+以上命令需在 FlashData 正式发布到 PyPI 后使用。发布前的本地测试请参阅[从源码安装](#从源码安装)。
+
+## 配置 API 密钥
 
 从你的 [FlashData 账户](https://flashdata.dev)获取 API 密钥，并通过客户端的 `api_key` 参数显式传入。
 以下示例用 `os.getenv("FLASHDATA_API_KEY")` 读取环境变量；也可以传入密钥管理服务提供的值。
@@ -244,6 +244,14 @@ python examples/async_query.py "python tutorial" --output artifacts/result.json
 
 这些命令调用真实 API 并消耗积分。运行 `python examples/offline.py` 可在无需账户、无需网络的情况下体验模拟请求。
 [SDK 对照说明](docs/sdk-parity.md)列出了 Python 与 TypeScript 的 API 覆盖、语言差异、工作流行为和验证范围。
+
+## 从源码安装
+
+在本仓库的源码目录中执行：
+
+```sh
+python -m pip install .
+```
 
 ## 开发
 

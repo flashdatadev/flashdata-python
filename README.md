@@ -26,14 +26,14 @@ See the [API documentation](https://flashdata.dev/docs) and [pricing](https://fl
 
 ## Install
 
-From a checkout of this repository:
-
 ```sh
-python -m pip install .
+pip install flashdata
 ```
 
-This version is available from source. PyPI installation instructions will be added
-when the package is released under FlashData's official account.
+This command requires FlashData's official PyPI publication. For local testing before
+release, use [installation from source](#install-from-source).
+
+## Configure your API key
 
 Obtain an API key from your [FlashData account](https://flashdata.dev) and pass it through
 the client's `api_key` argument. The examples below use `os.getenv("FLASHDATA_API_KEY")`
@@ -254,6 +254,14 @@ for a demonstration with a mock transport and no account.
 
 The [SDK comparison](docs/sdk-parity.md) maps Python and TypeScript coverage, language
 differences, workflow guarantees, and verification limits side by side.
+
+## Install from source
+
+From a checkout of this repository:
+
+```sh
+python -m pip install .
+```
 
 ## Development
 
