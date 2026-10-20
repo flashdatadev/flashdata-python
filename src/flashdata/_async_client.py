@@ -107,7 +107,7 @@ class AsyncFlashData:
             positive(timeout, "timeout")
         base = self.data_url if data else self.management_url
         url = base + ("" if data else "/v2") + path
-        headers = {"Accept": "application/json", "User-Agent": "flashdata-python/0.1.0"}
+        headers = {"Accept": "application/json", "User-Agent": "flashdata-python/1.0.0"}
         if not public:
             headers["X-API-Key"] = self._key
         try:

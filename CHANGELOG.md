@@ -11,7 +11,7 @@ discovery and bulk download CLIs, saved bulk job records, preserved concurrent p
 results, validated waiting arguments before submission, fixed initial cursor loops,
 added package-consumer verification, and linked every guide to official FlashData pages.
 
-## 0.1.0 — local release candidate
+## 1.0.0 — local release candidate
 
 - Document explicit `api_key=os.getenv("FLASHDATA_API_KEY")` initialization consistently
   across the README, guides, and authenticated CLI examples.
