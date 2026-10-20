@@ -30,19 +30,18 @@ No paid requests were repeated for this release check; earlier integration evide
 recorded in [validation](validation.md). Successful customer cloud writes, external
 webhook delivery, live pause/resume transitions, Linux and Python 3.14 still require
 their respective integration or CI runs. No repository, package or documentation site
-was published. Official owner URLs and package-name ownership must be set before release.
+was published by that local check. Package-name ownership must be confirmed before release.
 
 ## Before publication
 
-This repository is local. Before publication, create the official FlashData GitHub
-account, choose the repository owner and verify package-name availability/ownership.
+The GitHub source repository is [flashdatadev/flashdata-python](https://github.com/flashdatadev/flashdata-python).
 The planned Python distribution name is `flashdata` on PyPI; verify ownership before
-publishing. No registry has been changed by this work.
+publishing. GitHub pushes and CI checks do not publish packages.
 
-1. Set repository/source/issue metadata to the actual official repository URL.
+1. Confirm repository/source/issue metadata points to the official repository.
 2. Review license, contact, source contract, changelog and test results.
 3. Run all local checks and inspect the package contents listed below.
-4. Initialize/push the existing local repository to the official GitHub repository.
+4. Push the reviewed commits to the official GitHub repository.
 5. Run GitHub CI on supported platforms and runtimes. The workflows do not publish.
 6. Set up registry credentials or trusted publishing through the registry's official
    account settings, then deliberately publish the reviewed artifact.

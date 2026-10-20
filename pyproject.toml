@@ -21,6 +21,8 @@ docs = ["sphinx>=7,<9", "myst-parser>=3,<5", "sphinx-rtd-theme>=2,<4"]
 [project.urls]
 Homepage = "https://flashdata.dev"
 Documentation = "https://flashdata.dev/docs"
+Source = "https://github.com/flashdatadev/flashdata-python"
+Issues = "https://github.com/flashdatadev/flashdata-python/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
