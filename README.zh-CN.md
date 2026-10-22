@@ -30,9 +30,10 @@
 | 视频分析和内容目录补全 | [视频元数据](#获取视频元数据) |
 | 为视频摘要、搜索或检索获取文本 | [已有字幕文本](#为-ai-工作流获取字幕文本) |
 | 根据一组视频 ID 构建数据集 | [批量元数据导出](#构建-youtube-元数据数据集) |
-| 将 MP4 文件交付到自己的云存储桶 | [批量媒体下载](#批量下载-youtube-视频) |
+| 将音频或视频交付到自己的云存储桶 | [批量媒体下载](#批量下载-youtube-视频) |
+| 继续中断的批量任务 | [恢复任务](#恢复已启动的批量任务) |
 
-以下示例负责通过 API 获取数据；摘要生成、索引、定时调度和 AI 模型调用由你的应用实现。
+以下示例负责获取数据；摘要、检索索引、调度和 AI 模型调用由应用实现。
 
 ## 安装
 
@@ -218,26 +219,32 @@ import os
 from pathlib import Path
 from flashdata import FlashData
 
-with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+with (
+    FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client,
+    Path("videos.ndjson").open("x", encoding="utf-8") as output,
+    Path("videos.ndjson.job.json").open("x", encoding="utf-8") as record,
+):
     receipt = client.bulk.create({
         "source": "youtube_metadata",
         "options": {"include_formats": False},
     })
     bulk_id = receipt["job"]["id"]
     print("Save this bulk ID:", bulk_id, flush=True)
+    json.dump({"id": bulk_id}, record)
+    record.flush()
+    os.fsync(record.fileno())
     client.bulk.upload_file(receipt, Path("video-ids.txt"))
     client.bulk.start(bulk_id)
     completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
 
-    with Path("videos.ndjson").open("x", encoding="utf-8") as output:
-        for row in client.bulk.rows(bulk_id):
-            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    for row in client.bulk.rows(bulk_id):
+        output.write(json.dumps(row, ensure_ascii=False) + "\n")
     print("Saved videos.ndjson; counts:", completed["counts"])
     if completed["counts"].get("failed") or completed["counts"].get("invalid"):
         raise RuntimeError("Some items failed; inspect the saved rows before retrying")
 ```
 
-等待之前，请在应用中持久化打印出的任务 ID。进程重启或超时后，使用下方的
+内联程序会在上传前将已受理的任务 ID 保存到 `videos.ndjson.job.json`。进程重启或超时后，使用下方的
 [恢复流程](#恢复已启动的批量任务)，不要重新运行创建代码。示例导出使用独占创建模式，拒绝覆盖已有文件。
 
 如需开箱即用的脚本，在仓库根目录运行以下命令。它会在上传前自动将任务记录保存到
@@ -285,7 +292,11 @@ from flashdata import FlashData
 
 storage = json.loads(Path("private-storage.json").read_text(encoding="utf-8"))
 
-with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+with (
+    FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client,
+    Path("downloads.ndjson").open("x", encoding="utf-8") as output,
+    Path("downloads.ndjson.job.json").open("x", encoding="utf-8") as record,
+):
     receipt = client.bulk.create({
         "source": "youtube_download",
         "options": {
@@ -297,20 +308,23 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     })
     bulk_id = receipt["job"]["id"]
     print("Save this bulk ID:", bulk_id, flush=True)
+    json.dump({"id": bulk_id}, record)
+    record.flush()
+    os.fsync(record.fileno())
     client.bulk.upload_file(receipt, Path("video-ids.txt"))
     client.bulk.start(bulk_id)
 
     completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
     print("Counts:", completed["counts"])
-    with Path("downloads.ndjson").open("x", encoding="utf-8") as output:
-        for row in client.bulk.rows(bulk_id):
-            output.write(json.dumps(row, ensure_ascii=False) + "\n")
-            print(row["video_id"], row["status"])
+    for row in client.bulk.rows(bulk_id):
+        output.write(json.dumps(row, ensure_ascii=False) + "\n")
+        print(row["video_id"], row["status"])
     if completed["counts"].get("failed") or completed["counts"].get("invalid"):
         raise RuntimeError("Some items failed; inspect downloads.ndjson before retrying")
 ```
 
-以上程序将交付回执保存到 `downloads.ndjson`，并拒绝覆盖已有文件。
+以上程序会在上传前将已受理的 ID 保存到 `downloads.ndjson.job.json`，
+将交付回执保存到 `downloads.ndjson`，并拒绝覆盖已有文件。
 逐项失败时会先保存回执，再报告错误。
 
 媒体文件交付到你配置的存储桶。`bulk.rows()` 读取任务的 JSON 结果记录，
@@ -332,6 +346,15 @@ python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts
 第二条命令仅用于恢复已启动的任务，请替换保存的任务 ID，并使用新输出路径保留之前的导出结果。
 
 尚处于 `awaiting_upload` 的草稿仍需上传文件并调用 `start`；暂停的任务需解决暂停原因后调用 `resume`。
+
+### 改为交付 MP3 音频
+
+相同 ID 文件和存储配置也可用于音频任务。将上述内联请求的下载选项改为
+`download_type="audio"` 和 `output_format="mp3"`，并移除 `video_quality`；或者在仓库根目录运行：
+
+```sh
+python examples/bulk_download.py video-ids.txt --audio --storage-file private-storage.json --output artifacts/audio.ndjson
+```
 
 ## 恢复已启动的批量任务
 
@@ -415,7 +438,11 @@ python examples/async_query.py "python tutorial" --output artifacts/result.json
 ```
 
 这些命令调用真实 API 并消耗积分。运行 `python examples/offline.py` 可在无需账户、无需网络的情况下体验模拟请求。
-[SDK 对照说明](docs/sdk-parity.md)列出了 Python 与 TypeScript 的 API 覆盖、语言差异、工作流行为和验证范围。
+[SDK 对照说明](docs/sdk-parity.md)列出了 Python、TypeScript/JavaScript、Go 和 CLI 的 API 覆盖、语言差异、工作流行为和验证范围。
+
+批量脚本会在任何 API 调用之前拒绝覆盖已有导出或 `OUTPUT.job.json` 记录。
+超时或中断后，请使用已保存的 ID 和新输出路径恢复；不要重新执行创建。
+保留的空记录表示需先核实提交结果，再决定是否创建新任务。
 
 ## 从源码安装
 

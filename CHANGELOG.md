@@ -11,6 +11,10 @@ discovery and bulk download CLIs, saved bulk job records, preserved concurrent p
 results, validated waiting arguments before submission, fixed initial cursor loops,
 added package-consumer verification, and linked every guide to official FlashData pages.
 
+## Unreleased
+
+Align English/Chinese workflow navigation with all SDKs and the CLI. Bulk examples now reserve exports and recovery records before API calls, sync accepted IDs, preserve orphaned records, check every item status and recover without replay. Add an MP3 audio variant and update the side-by-side comparison.
+
 ## 1.0.0 — local release candidate
 
 - Document explicit `api_key=os.getenv("FLASHDATA_API_KEY")` initialization consistently

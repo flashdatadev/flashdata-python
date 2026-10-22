@@ -34,10 +34,11 @@ See the [API documentation](https://flashdata.dev/docs) and [pricing](https://fl
 | Video analytics and catalog enrichment | [Video metadata](#get-a-videos-metadata) |
 | Text for video summaries, search or retrieval | [Existing transcripts](#get-transcript-text-for-an-ai-workflow) |
 | A dataset from a list of video IDs | [Bulk metadata export](#build-a-youtube-metadata-dataset) |
-| MP4 files delivered to your own cloud bucket | [Bulk media download](#download-youtube-videos-in-bulk) |
+| Audio or video files delivered to your own cloud bucket | [Bulk media download](#download-youtube-videos-in-bulk) |
+| Continue an interrupted bulk job | [Recovery](#recover-an-already-started-bulk-job) |
 
-The examples below show API data collection. Your application supplies any summarization,
-indexing, scheduling or AI model calls.
+The examples collect data; your application provides summarization, indexing, scheduling
+and AI model calls.
 
 ## Install
 
@@ -231,26 +232,32 @@ import os
 from pathlib import Path
 from flashdata import FlashData
 
-with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+with (
+    FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client,
+    Path("videos.ndjson").open("x", encoding="utf-8") as output,
+    Path("videos.ndjson.job.json").open("x", encoding="utf-8") as record,
+):
     receipt = client.bulk.create({
         "source": "youtube_metadata",
         "options": {"include_formats": False},
     })
     bulk_id = receipt["job"]["id"]
     print("Save this bulk ID:", bulk_id, flush=True)
+    json.dump({"id": bulk_id}, record)
+    record.flush()
+    os.fsync(record.fileno())
     client.bulk.upload_file(receipt, Path("video-ids.txt"))
     client.bulk.start(bulk_id)
     completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
 
-    with Path("videos.ndjson").open("x", encoding="utf-8") as output:
-        for row in client.bulk.rows(bulk_id):
-            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    for row in client.bulk.rows(bulk_id):
+        output.write(json.dumps(row, ensure_ascii=False) + "\n")
     print("Saved videos.ndjson; counts:", completed["counts"])
     if completed["counts"].get("failed") or completed["counts"].get("invalid"):
         raise RuntimeError("Some items failed; inspect the saved rows before retrying")
 ```
 
-Persist the printed job ID in your application before waiting. After a restart or timeout,
+The inline program saves the accepted ID to `videos.ndjson.job.json` before uploading. After a restart or timeout,
 use the [recovery flow](#recover-an-already-started-bulk-job) below instead of rerunning creation.
 The inline export uses exclusive creation and refuses to overwrite an existing file.
 
@@ -298,7 +305,11 @@ from flashdata import FlashData
 
 storage = json.loads(Path("private-storage.json").read_text(encoding="utf-8"))
 
-with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+with (
+    FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client,
+    Path("downloads.ndjson").open("x", encoding="utf-8") as output,
+    Path("downloads.ndjson.job.json").open("x", encoding="utf-8") as record,
+):
     receipt = client.bulk.create({
         "source": "youtube_download",
         "options": {
@@ -310,20 +321,23 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     })
     bulk_id = receipt["job"]["id"]
     print("Save this bulk ID:", bulk_id, flush=True)
+    json.dump({"id": bulk_id}, record)
+    record.flush()
+    os.fsync(record.fileno())
     client.bulk.upload_file(receipt, Path("video-ids.txt"))
     client.bulk.start(bulk_id)
 
     completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
     print("Counts:", completed["counts"])
-    with Path("downloads.ndjson").open("x", encoding="utf-8") as output:
-        for row in client.bulk.rows(bulk_id):
-            output.write(json.dumps(row, ensure_ascii=False) + "\n")
-            print(row["video_id"], row["status"])
+    for row in client.bulk.rows(bulk_id):
+        output.write(json.dumps(row, ensure_ascii=False) + "\n")
+        print(row["video_id"], row["status"])
     if completed["counts"].get("failed") or completed["counts"].get("invalid"):
         raise RuntimeError("Some items failed; inspect downloads.ndjson before retrying")
 ```
 
-The inline program saves delivery receipts to `downloads.ndjson` and refuses to overwrite
+The inline program saves its accepted ID to `downloads.ndjson.job.json` before uploading.
+It saves delivery receipts to `downloads.ndjson` and refuses to overwrite
 an existing file. Item failures are reported after receipts have been saved.
 
 Media files are delivered to your configured bucket. `bulk.rows()` reads the task's
@@ -346,6 +360,16 @@ python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts
 
 Run the second command only to recover an already started job, replacing the saved ID.
 Use a fresh output path to retain any previous export.
+
+### Deliver MP3 audio instead
+
+Use the same ID file and private storage configuration. In the inline request, set
+`download_type` to `audio`, set `output_format` to `mp3`, and remove `video_quality`;
+or run the ready-to-use script from the repository root:
+
+```sh
+python examples/bulk_download.py video-ids.txt --audio --storage-file private-storage.json --output artifacts/audio.ndjson
+```
 
 ## Recover an already started bulk job
 
@@ -433,8 +457,12 @@ python examples/async_query.py "python tutorial" --output artifacts/result.json
 These commands call the live API and consume credits. Run `python examples/offline.py`
 for a demonstration with a mock transport and no account.
 
-The [SDK comparison](docs/sdk-parity.md) maps Python and TypeScript coverage, language
-differences, workflow guarantees, and verification limits side by side.
+The [SDK and CLI comparison](docs/sdk-parity.md) maps Python, TypeScript/JavaScript, Go
+and CLI coverage, examples, bulk recovery and intentional language differences side by side.
+
+Bulk scripts refuse existing exports or `OUTPUT.job.json` records before any API call.
+After a timeout or interruption, recover the saved ID into a fresh output path; do not
+rerun creation. An empty reserved record needs reconciliation before new work.
 
 ## Install from source
 

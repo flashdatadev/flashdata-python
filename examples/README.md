@@ -73,8 +73,8 @@ Save the job/bulk ID printed before waiting. Resume after a polling deadline or 
 
 ```sh
 python examples/async_query.py --job-id job_YOUR_SAVED_ID --output artifacts/job.json
-python examples/bulk.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/videos.ndjson
-python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads.ndjson
+python examples/bulk.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/videos-recovered.ndjson
+python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads-recovered.ndjson
 ```
 
 Resume commands read existing work instead of submitting it again. A bulk export can contain
@@ -83,3 +83,14 @@ incomplete dataset. Inspect saved output before deciding which items to submit a
 The bulk CLIs save a job record as `OUTPUT.job.json` before upload and on completion;
 signed upload descriptors are never saved. Resume assumes the task has already started.
 Drafts need upload/start and paused jobs need their blocking condition resolved and `resume` called.
+
+## Bulk export and recovery safety
+
+Bulk scripts reserve fresh export and `OUTPUT.job.json` paths before contacting the API.
+They refuse to overwrite either file, including an orphaned or empty recovery record.
+Accepted IDs are synced before upload, and completion checkpoints are replaced atomically.
+After interruption, use `--bulk-id` with a fresh `--output` filename; never rerun creation
+with an old output path. Empty records after uncertain creation need reconciliation.
+
+The media example defaults to MP4. Add `--audio` for MP3 using the same private storage
+configuration. See the [workflow comparison](../docs/sdk-parity.md).

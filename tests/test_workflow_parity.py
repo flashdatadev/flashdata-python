@@ -14,6 +14,78 @@ from flashdata import APIError
 ROOT = Path(__file__).parents[1]
 
 
+def test_bulk_row_failure_is_reported_even_when_final_counts_are_zero(example_api, monkeypatch, tmp_path):
+    from flashdata._resources import Bulk
+
+    def rows(self, bulk_id):
+        yield {"status": "invalid", "video_id": "dQw4w9WgXcQ"}
+
+    monkeypatch.setattr(Bulk, "rows", rows)
+    monkeypatch.setattr(sys, "argv", ["bulk.py", "video-ids.txt", "--output", "invalid.ndjson"])
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(ROOT / "examples/bulk.py"), run_name="__main__")
+    assert error.value.code == 1
+    assert json.loads((tmp_path / "invalid.ndjson").read_text())["status"] == "invalid"
+
+
+@pytest.mark.parametrize("flags,kind,format_", [([], "audio_video", "mp4"), (["--audio"], "audio", "mp3")])
+def test_bulk_media_examples_send_audio_or_video_options(flags, kind, format_, example_api, monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["bulk_download.py", "video-ids.txt", *flags])
+    runpy.run_path(str(ROOT / "examples/bulk_download.py"), run_name="__main__")
+    created = [r for r in example_api if r.method == "POST" and r.url.path.endswith("/bulk-jobs")]
+    options = json.loads(created[0].content)["options"]
+    assert options["download_type"] == kind and options["output_format"] == format_
+    assert ("video_quality" in options) == (kind == "audio_video")
+    assert options["storage"]
+
+
+@pytest.mark.parametrize("name", ["bulk", "bulk_download"])
+@pytest.mark.parametrize("existing", ["export.ndjson", "export.ndjson.job.json"])
+def test_existing_bulk_exports_or_records_block_submission(name, existing, example_api, monkeypatch, tmp_path):
+    previous = tmp_path / existing
+    previous.write_text("preserve this record", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", [name + ".py", "video-ids.txt", "--output", "export.ndjson"])
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(ROOT / f"examples/{name}.py"), run_name="__main__")
+    assert error.value.code == 1 and not example_api
+    assert previous.read_text(encoding="utf-8") == "preserve this record"
+
+
+@pytest.mark.parametrize("name", ["bulk", "bulk_download"])
+def test_bulk_ids_survive_lost_start_and_reruns_never_create(name, example_api, monkeypatch, tmp_path):
+    from flashdata._resources import Bulk
+
+    original_upload, original_start = Bulk.upload_file, Bulk.start
+    record = tmp_path / "export.ndjson.job.json"
+
+    def upload(self, receipt, path):
+        assert json.loads(record.read_text())["id"] == receipt["job"]["id"]
+        assert "upload" not in json.loads(record.read_text())
+        return original_upload(self, receipt, path)
+
+    def lost_start(self, bulk_id, **kwargs):
+        original_start(self, bulk_id, **kwargs)
+        raise OSError("simulated lost start response")
+
+    monkeypatch.setattr(Bulk, "upload_file", upload)
+    monkeypatch.setattr(Bulk, "start", lost_start)
+    monkeypatch.setattr(sys, "argv", [name + ".py", "video-ids.txt", "--output", "export.ndjson"])
+    with pytest.raises(SystemExit):
+        runpy.run_path(str(ROOT / f"examples/{name}.py"), run_name="__main__")
+    accepted = record.read_bytes()
+    before = len(example_api)
+    for orphaned_record in (False, True):
+        if orphaned_record:
+            (tmp_path / "export.ndjson").unlink()
+        with pytest.raises(SystemExit):
+            runpy.run_path(str(ROOT / f"examples/{name}.py"), run_name="__main__")
+        assert len(example_api) == before and record.read_bytes() == accepted
+    monkeypatch.setattr(sys, "argv", [name + ".py", "--bulk-id", "bulk_docs12345", "--output", "recovered.ndjson"])
+    runpy.run_path(str(ROOT / f"examples/{name}.py"), run_name="__main__")
+    assert all(request.method == "GET" for request in example_api[before:])
+    assert json.loads((tmp_path / "recovered.ndjson").read_text())["status"] == "completed"
+
+
 @pytest.mark.parametrize("name", ["bulk", "bulk_download", "async_query"])
 @pytest.mark.parametrize("value", ["0", "nan"])
 def test_invalid_wait_argument_never_submits(name, value, example_api, monkeypatch):

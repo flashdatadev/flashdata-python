@@ -13,22 +13,34 @@ Create a local `video-ids.txt` file containing, for example, `dQw4w9WgXcQ` on on
 Then run:
 
 ```python
-import os
 import json
+import os
 from pathlib import Path
 from flashdata import FlashData
 
-with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
-    receipt = client.bulk.create({"source": "youtube_metadata",
-                                  "options": {"include_formats": False}})
+with (
+    FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client,
+    Path("videos.ndjson").open("x", encoding="utf-8") as output,
+    Path("videos.ndjson.job.json").open("x", encoding="utf-8") as record,
+):
+    receipt = client.bulk.create({
+        "source": "youtube_metadata",
+        "options": {"include_formats": False},
+    })
     bulk_id = receipt["job"]["id"]
-    print("Save this ID:", bulk_id, flush=True)
+    print("Save this bulk ID:", bulk_id, flush=True)
+    json.dump({"id": bulk_id}, record)
+    record.flush()
+    os.fsync(record.fileno())
     client.bulk.upload_file(receipt, Path("video-ids.txt"))
     client.bulk.start(bulk_id)
-    client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
-    with Path("dataset.ndjson").open("w", encoding="utf-8") as output:
-        for row in client.bulk.rows(bulk_id):
-            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
+
+    for row in client.bulk.rows(bulk_id):
+        output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print("Saved videos.ndjson; counts:", completed["counts"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect the saved rows before retrying")
 ```
 
 Creation returns a job plus a short-lived signed PUT upload descriptor (15 minutes).
@@ -57,7 +69,11 @@ from flashdata import FlashData
 
 storage = json.loads(Path("private-storage.json").read_text(encoding="utf-8"))
 
-with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+with (
+    FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client,
+    Path("downloads.ndjson").open("x", encoding="utf-8") as output,
+    Path("downloads.ndjson.job.json").open("x", encoding="utf-8") as record,
+):
     receipt = client.bulk.create({
         "source": "youtube_download",
         "options": {
@@ -69,20 +85,26 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
     })
     bulk_id = receipt["job"]["id"]
     print("Save this bulk ID:", bulk_id, flush=True)
+    json.dump({"id": bulk_id}, record)
+    record.flush()
+    os.fsync(record.fileno())
     client.bulk.upload_file(receipt, Path("video-ids.txt"))
     client.bulk.start(bulk_id)
 
     completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
     print("Counts:", completed["counts"])
     for row in client.bulk.rows(bulk_id):
+        output.write(json.dumps(row, ensure_ascii=False) + "\n")
         print(row["video_id"], row["status"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect downloads.ndjson before retrying")
 ```
 
 For a runnable export:
 
 ```sh
 python examples/bulk_download.py video-ids.txt --storage-file private-storage.json --output artifacts/downloads.ndjson
-python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads.ndjson
+python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads-recovered.ndjson
 ```
 
 Both bulk CLIs save only the job record to `OUTPUT.job.json` before upload and refresh
@@ -125,3 +147,14 @@ for async job and row iterators.
 
 The runnable [bulk example](examples.md) supports submitting and resuming an
 existing ID, so a process restart does not require re-uploading or re-submitting work.
+
+## Safe local exports
+
+The bulk scripts reserve new output and `OUTPUT.job.json` files before any API call,
+refuse existing files, and sync accepted IDs before upload. Completion records are
+replaced atomically. A lost start response leaves its accepted ID available; recovery
+uses that ID and a fresh output path without another creation or upload. Empty reserved
+records after an uncertain create require account/server reconciliation.
+
+Use `bulk_download.py` with `--audio` for MP3; the default is MP4.
+Compare [all SDKs and the CLI](sdk-parity.md) for coverage and persistence differences.
