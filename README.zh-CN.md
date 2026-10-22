@@ -20,6 +20,20 @@
 媒体下载会将音频或视频直接交付到你自己的云存储。
 详情见 [API 文档](https://flashdata.dev/docs)和[价格说明](https://flashdata.dev/pricing)。
 
+## 按使用场景选择工作流
+
+| 想要构建的功能 | 从这里开始 |
+| --- | --- |
+| 为 AI 助手提供网页上下文和来源链接 | [Google 搜索](#搜索-google) |
+| 行业研究或新闻监控 | [新闻搜索](#跟踪行业新闻) |
+| 按主题发现视频或学习资源 | [YouTube 搜索](#按主题查找-youtube-视频) |
+| 视频分析和内容目录补全 | [视频元数据](#获取视频元数据) |
+| 为视频摘要、搜索或检索获取文本 | [已有字幕文本](#为-ai-工作流获取字幕文本) |
+| 根据一组视频 ID 构建数据集 | [批量元数据导出](#构建-youtube-元数据数据集) |
+| 将 MP4 文件交付到自己的云存储桶 | [批量媒体下载](#批量下载-youtube-视频) |
+
+以下示例负责通过 API 获取数据；摘要生成、索引、定时调度和 AI 模型调用由你的应用实现。
+
 ## 安装
 
 ```sh
@@ -44,6 +58,12 @@ export FLASHDATA_API_KEY="YOUR_API_KEY"
 $env:FLASHDATA_API_KEY = "YOUR_API_KEY"
 ```
 
+下面的代码块都是独立示例。完成安装并设置 API 密钥后，将任一代码块保存为 `quickstart.py`，然后运行：
+
+```sh
+python quickstart.py
+```
+
 ## 搜索 Google
 
 ```python
@@ -60,6 +80,69 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 响应是普通字典。外层 `response["results"]` 包含各数据源的结果对象；
 Google 网页搜索条目位于其中的 `organic` 列表中。其他数据源使用各自的字段结构。
 本次请求消耗的积分（Credits）位于 `response["usage"]["credits"]`。
+
+## 跟踪行业新闻
+
+收集行业新闻的标题、发布来源和文章链接，供研究工具或监控脚本使用。
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.google.news("battery recycling", gl="us", hl="en", num=5)
+    for payload in response["results"]:
+        for article in payload.get("news", []):
+            print(article.get("title"), article.get("source"), article.get("link"))
+```
+
+## 按主题查找 YouTube 视频
+
+发现相关视频，并获取可用于后续元数据或字幕请求的视频 ID。
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.youtube.search("python tutorial", max_results=5)
+    for payload in response["results"]:
+        for video in payload.get("results", []):
+            print(video.get("videoId"), video.get("title"), video.get("channel"))
+```
+
+## 获取视频元数据
+
+补全视频目录中的标题、频道、时长和播放量。请将示例 ID 替换为你要处理的视频 ID。
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.youtube.metadata("dQw4w9WgXcQ", include_formats=False)
+    for video in response["results"]:
+        print(video.get("title"), video.get("channel"))
+        print("Seconds:", video.get("duration"), "Views:", video.get("viewCount"))
+```
+
+## 为 AI 工作流获取字幕文本
+
+读取已有的英文自动字幕文本，供应用生成摘要或建立检索索引。
+API 返回文本；摘要生成或向量化由你的应用完成。
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.youtube.transcript("dQw4w9WgXcQ", language="en", auto=True)
+    for track in response["results"]:
+        print(track.get("fullText", ""))
+```
+
+字幕取决于视频已有的语言轨道；不会自动转写或翻译缺失的字幕。
+如需人工上传的字幕，可使用下面的 `captions` 示例。
 
 ## 读取 YouTube 字幕轨道
 
@@ -117,6 +200,58 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 `wait()` 返回已完成的任务记录，`result()` 获取 JSON 结果。
 不同查询可使用[混合批次](docs/jobs.md)；每行一个 YouTube 视频 ID 的 UTF-8 文件可使用[批量任务](docs/bulk.md)。
 
+## 构建 YouTube 元数据数据集
+
+创建 `video-ids.txt`，每行填写一个 YouTube 视频 ID：
+
+```text
+dQw4w9WgXcQ
+jNQXAC9IVRw
+```
+
+以下示例完成创建任务 → 上传 ID → 启动 → 等待 → 导出 NDJSON（每行一个 JSON 对象）。
+每行包含一个输入条目的处理状态和数据。
+
+```python
+import json
+import os
+from pathlib import Path
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    receipt = client.bulk.create({
+        "source": "youtube_metadata",
+        "options": {"include_formats": False},
+    })
+    bulk_id = receipt["job"]["id"]
+    print("Save this bulk ID:", bulk_id, flush=True)
+    client.bulk.upload_file(receipt, Path("video-ids.txt"))
+    client.bulk.start(bulk_id)
+    completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
+
+    with Path("videos.ndjson").open("x", encoding="utf-8") as output:
+        for row in client.bulk.rows(bulk_id):
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print("Saved videos.ndjson; counts:", completed["counts"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect the saved rows before retrying")
+```
+
+等待之前，请在应用中持久化打印出的任务 ID。进程重启或超时后，使用下方的
+[恢复流程](#恢复已启动的批量任务)，不要重新运行创建代码。示例导出使用独占创建模式，拒绝覆盖已有文件。
+
+如需开箱即用的脚本，在仓库根目录运行以下命令。它会在上传前自动将任务记录保存到
+`OUTPUT.job.json`，并保留逐项失败的导出结果：
+
+```sh
+python examples/bulk.py video-ids.txt --output artifacts/videos.ndjson
+python examples/bulk.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/videos-recovered.ndjson
+```
+
+创建与恢复命令是两种不同的运行方式；仅在需要恢复时运行第二条命令，并替换任务 ID。
+其他批量来源包括 `youtube_transcript`、`youtube_captions` 和 `youtube_trainability`；
+每个任务共用一套选项。参数说明见[批量指南](docs/bulk.md)。
+
 ## 批量下载 YouTube 视频
 
 创建 `video-ids.txt`，每行一个 11 位视频 ID：
@@ -167,9 +302,16 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 
     completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
     print("Counts:", completed["counts"])
-    for row in client.bulk.rows(bulk_id):
-        print(row["video_id"], row["status"])
+    with Path("downloads.ndjson").open("x", encoding="utf-8") as output:
+        for row in client.bulk.rows(bulk_id):
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+            print(row["video_id"], row["status"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect downloads.ndjson before retrying")
 ```
+
+以上程序将交付回执保存到 `downloads.ndjson`，并拒绝覆盖已有文件。
+逐项失败时会先保存回执，再报告错误。
 
 媒体文件交付到你配置的存储桶。`bulk.rows()` 读取任务的 JSON 结果记录，
 包括每个视频的状态，以及 `results` 中的数据源输出；它不会把媒体文件下载到本机。
@@ -184,10 +326,40 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 
 ```sh
 python examples/bulk_download.py video-ids.txt --storage-file private-storage.json --output artifacts/downloads.ndjson
-python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads.ndjson
+python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads-recovered.ndjson
 ```
 
+第二条命令仅用于恢复已启动的任务，请替换保存的任务 ID，并使用新输出路径保留之前的导出结果。
+
 尚处于 `awaiting_upload` 的草稿仍需上传文件并调用 `start`；暂停的任务需解决暂停原因后调用 `resume`。
+
+## 恢复已启动的批量任务
+
+将 `bulk_YOUR_SAVED_ID` 替换为元数据或下载任务先前打印并保存的 ID。
+此流程只等待和读取已有任务，不创建任务、不重新上传 ID，也不会重新提交下载。
+
+```python
+import json
+import os
+from pathlib import Path
+from flashdata import FlashData
+
+bulk_id = "bulk_YOUR_SAVED_ID"
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
+    with Path("recovered.ndjson").open("x", encoding="utf-8") as output:
+        for row in client.bulk.rows(bulk_id):
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print("Saved recovered.ndjson; counts:", completed["counts"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect the saved rows before retrying")
+```
+
+等待超时只会停止本地轮询，已受理的服务端任务仍会继续。`awaiting_upload` 状态仍需
+原始上传描述和显式 `start`；已暂停任务需先修复原因，再调用 `resume`。示例任务记录不含签名上传描述，
+不能仅凭 ID 恢复上传前中断的进程。不要将存储凭据或签名 URL 写到普通任务记录中。
+
+请及时导出结果，内部结果在完成后保留 24 小时。详情见[批量控制与恢复](docs/bulk.md)。
 
 ## 处理错误
 

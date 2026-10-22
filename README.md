@@ -24,6 +24,21 @@ Use realtime requests, background jobs, mixed batches, or bulk video ID files to
 workload. Media downloads deliver audio or video into your own cloud storage.
 See the [API documentation](https://flashdata.dev/docs) and [pricing](https://flashdata.dev/pricing).
 
+## Choose a workflow
+
+| What you want to build | Start here |
+| --- | --- |
+| Web context and source links for an AI assistant | [Google search](#search-google) |
+| Industry research or news monitoring | [News search](#follow-industry-news) |
+| Video discovery for a topic or learning resource | [YouTube search](#find-youtube-videos-about-a-topic) |
+| Video analytics and catalog enrichment | [Video metadata](#get-a-videos-metadata) |
+| Text for video summaries, search or retrieval | [Existing transcripts](#get-transcript-text-for-an-ai-workflow) |
+| A dataset from a list of video IDs | [Bulk metadata export](#build-a-youtube-metadata-dataset) |
+| MP4 files delivered to your own cloud bucket | [Bulk media download](#download-youtube-videos-in-bulk) |
+
+The examples below show API data collection. Your application supplies any summarization,
+indexing, scheduling or AI model calls.
+
 ## Install
 
 ```sh
@@ -52,6 +67,13 @@ export FLASHDATA_API_KEY="YOUR_API_KEY"
 $env:FLASHDATA_API_KEY = "YOUR_API_KEY"
 ```
 
+Each code block below is a standalone example. After installing and setting your API key,
+save a block as `quickstart.py` and run:
+
+```sh
+python quickstart.py
+```
+
 ## Search Google
 
 ```python
@@ -68,6 +90,70 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 Responses are ordinary dictionaries. `response["results"]` contains source payloads:
 Google web hits are in each payload's `organic` list. Other sources have their own
 fields. Credits charged for the request are in `response["usage"]["credits"]`.
+
+## Follow industry news
+
+Collect headlines, publishers and article links for a research tool or monitoring script.
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.google.news("battery recycling", gl="us", hl="en", num=5)
+    for payload in response["results"]:
+        for article in payload.get("news", []):
+            print(article.get("title"), article.get("source"), article.get("link"))
+```
+
+## Find YouTube videos about a topic
+
+Discover relevant videos and get IDs you can pass to metadata or transcript requests.
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.youtube.search("python tutorial", max_results=5)
+    for payload in response["results"]:
+        for video in payload.get("results", []):
+            print(video.get("videoId"), video.get("title"), video.get("channel"))
+```
+
+## Get a video's metadata
+
+Enrich a video catalog with titles, channels, duration and view counts. Replace the example
+ID with a video you want to analyze.
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.youtube.metadata("dQw4w9WgXcQ", include_formats=False)
+    for video in response["results"]:
+        print(video.get("title"), video.get("channel"))
+        print("Seconds:", video.get("duration"), "Views:", video.get("viewCount"))
+```
+
+## Get transcript text for an AI workflow
+
+Read an existing English automatic caption track for your application to summarize or index.
+The API returns text; your application performs the summarization or embedding.
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.youtube.transcript("dQw4w9WgXcQ", language="en", auto=True)
+    for track in response["results"]:
+        print(track.get("fullText", ""))
+```
+
+Transcripts depend on the language tracks available on the video; missing tracks are not
+transcribed or translated. For uploaded captions, use the `captions` example below.
 
 ## Read a YouTube caption track
 
@@ -127,6 +213,59 @@ Save the ID before waiting so the same job can be resumed after a process restar
 Use [batch submission](docs/jobs.md) for mixed queries and [bulk jobs](docs/bulk.md)
 for UTF-8 files containing one YouTube video ID per line.
 
+## Build a YouTube metadata dataset
+
+Create `video-ids.txt` with one YouTube video ID per line:
+
+```text
+dQw4w9WgXcQ
+jNQXAC9IVRw
+```
+
+This example creates the job, uploads the IDs, starts processing, waits, and exports
+NDJSON (one JSON object per line). Each row includes an input item's status and data.
+
+```python
+import json
+import os
+from pathlib import Path
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    receipt = client.bulk.create({
+        "source": "youtube_metadata",
+        "options": {"include_formats": False},
+    })
+    bulk_id = receipt["job"]["id"]
+    print("Save this bulk ID:", bulk_id, flush=True)
+    client.bulk.upload_file(receipt, Path("video-ids.txt"))
+    client.bulk.start(bulk_id)
+    completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
+
+    with Path("videos.ndjson").open("x", encoding="utf-8") as output:
+        for row in client.bulk.rows(bulk_id):
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print("Saved videos.ndjson; counts:", completed["counts"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect the saved rows before retrying")
+```
+
+Persist the printed job ID in your application before waiting. After a restart or timeout,
+use the [recovery flow](#recover-an-already-started-bulk-job) below instead of rerunning creation.
+The inline export uses exclusive creation and refuses to overwrite an existing file.
+
+For a ready-to-run script, run these commands from the repository root. It saves the job
+record to `OUTPUT.job.json` before upload and preserves exports with per-item failures:
+
+```sh
+python examples/bulk.py video-ids.txt --output artifacts/videos.ndjson
+python examples/bulk.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/videos-recovered.ndjson
+```
+
+The create and recovery commands are separate runs; use the second only when recovering,
+and replace the saved ID. Other bulk sources include `youtube_transcript`, `youtube_captions`
+and `youtube_trainability`; each job applies one set of options to all IDs. See [bulk options](docs/bulk.md).
+
 ## Download YouTube videos in bulk
 
 Create `video-ids.txt` with one video ID per line:
@@ -176,9 +315,16 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
 
     completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
     print("Counts:", completed["counts"])
-    for row in client.bulk.rows(bulk_id):
-        print(row["video_id"], row["status"])
+    with Path("downloads.ndjson").open("x", encoding="utf-8") as output:
+        for row in client.bulk.rows(bulk_id):
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+            print(row["video_id"], row["status"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect downloads.ndjson before retrying")
 ```
+
+The inline program saves delivery receipts to `downloads.ndjson` and refuses to overwrite
+an existing file. Item failures are reported after receipts have been saved.
 
 Media files are delivered to your configured bucket. `bulk.rows()` reads the task's
 JSON result records, including each video's status and source output in `results`.
@@ -195,8 +341,43 @@ already started task without creating another submission:
 
 ```sh
 python examples/bulk_download.py video-ids.txt --storage-file private-storage.json --output artifacts/downloads.ndjson
-python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads.ndjson
+python examples/bulk_download.py --bulk-id bulk_YOUR_SAVED_ID --output artifacts/downloads-recovered.ndjson
 ```
+
+Run the second command only to recover an already started job, replacing the saved ID.
+Use a fresh output path to retain any previous export.
+
+## Recover an already started bulk job
+
+Replace `bulk_YOUR_SAVED_ID` with the ID printed and saved from either the metadata or
+download task. This flow only waits for and reads existing work: no creation, upload or
+new download submission.
+
+```python
+import json
+import os
+from pathlib import Path
+from flashdata import FlashData
+
+bulk_id = "bulk_YOUR_SAVED_ID"
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    completed = client.bulk.wait(bulk_id, timeout=3600, poll_interval=5)
+    with Path("recovered.ndjson").open("x", encoding="utf-8") as output:
+        for row in client.bulk.rows(bulk_id):
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print("Saved recovered.ndjson; counts:", completed["counts"])
+    if completed["counts"].get("failed") or completed["counts"].get("invalid"):
+        raise RuntimeError("Some items failed; inspect the saved rows before retrying")
+```
+
+A polling timeout stops local waiting; accepted server work continues. An `awaiting_upload`
+job still needs the original upload descriptor and an explicit `start`; a paused job needs
+its cause fixed and an explicit `resume`. The example job records omit signed upload
+descriptors, so an ID alone cannot recover a process interrupted before upload. Keep storage
+credentials and signed URLs out of ordinary job records.
+
+Export promptly: internal results are retained for 24 hours after completion. See
+[bulk controls and recovery](docs/bulk.md).
 
 ## Handle failures
 
