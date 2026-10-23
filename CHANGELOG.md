@@ -13,6 +13,19 @@ added package-consumer verification, and linked every guide to official FlashDat
 
 ## Unreleased
 
+- Match source-helper type hints to realtime/background restrictions, including callbacks.
+  Check valid return types and rejected combinations for both clients.
+- Verify completed-job metadata in every format with API-generated examples for all
+  15 sources; documentation fixtures preserve the submitted job's identity and state.
+
+- Add per-call `accept` and `respond_with` options to sync and async clients. JSON
+  remains the default; plain-text responses return strings and Markdown JSON returns
+  `content` with response metadata.
+- Support plain-text receipts, batches and job status, plus all four result formats
+  for realtime helpers and completed jobs. Preserve structured errors and signed
+  storage retrieval for default JSON results.
+- Add response-format examples, English/Chinese README guidance and refreshed OpenAPI.
+
 Align English/Chinese workflow navigation with all SDKs and the CLI. Bulk examples now reserve exports and recovery records before API calls, sync accepted IDs, preserve orphaned records, check every item status and recover without replay. Add an MP3 audio variant and update the side-by-side comparison.
 
 ## 1.0.0 — local release candidate

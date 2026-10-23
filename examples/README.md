@@ -49,6 +49,16 @@ The download script requires a real private cloud destination JSON file or
 `FLASHDATA_STORAGE_FILE`; see the storage guide in `docs/storage.md`. It submits one paid
 download and waits only when `--wait` is passed. Keep destination credentials private.
 
+## Response formats
+
+```sh
+python examples/response_formats.py google_search "vector databases" --accept text/plain
+python examples/response_formats.py youtube_transcript dQw4w9WgXcQ --respond-with markdown --accept text/plain --output artifacts/transcript.md
+```
+
+Each command makes one query. Omit both flags for JSON. Combine them to choose
+[JSON, plain text or Markdown](../docs/response-formats.md).
+
 ## Workflows
 
 ```sh

@@ -2,6 +2,7 @@
 
 from ._client import FlashData
 from ._async_client import AsyncFlashData
+from .types import ContentRepresentation, MarkdownQueryResult, ResponseAccept
 from .errors import (
     APIError,
     ConnectionError,
@@ -20,6 +21,9 @@ __version__ = "1.0.0"
 __all__ = [
     "FlashData",
     "AsyncFlashData",
+    "ContentRepresentation",
+    "MarkdownQueryResult",
+    "ResponseAccept",
     "APIError",
     "ConnectionError",
     "FlashDataError",

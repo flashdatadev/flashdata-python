@@ -55,8 +55,9 @@ instead of creating a client for every call. See [async and configuration](clien
 
 ## Understand the response
 
-A realtime response has `source`, `status` (`done`), `created_at`, `usage`, and `results`.
+A default JSON realtime response has `source`, `status` (`done`), `created_at`, `usage`, and `results`.
 The `results` array wraps provider payloads; it is not a universal flat hit list.
+Choose [plain text or Markdown](response-formats.md) when you want readable content.
 
 | Source | Read from each item of `response["results"]` |
 | --- | --- |

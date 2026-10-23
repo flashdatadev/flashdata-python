@@ -7,6 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 from flashdata import AsyncFlashData, FlashData
+from response_fixtures import format_fixture, stored_result
 
 ROOT = Path(__file__).parents[1]
 FIXTURES = json.loads((ROOT / "tests/fixtures/source-examples.json").read_text())
@@ -16,6 +17,12 @@ FIXTURES = json.loads((ROOT / "tests/fixtures/source-examples.json").read_text()
 def example_api(monkeypatch, tmp_path):
     calls = []
     jobs = {}
+
+    def formatted(request, value, group):
+        accept = request.headers.get("accept", "application/json")
+        representation = request.headers.get("x-respond-with") if group in FIXTURES else None
+        body = format_fixture(value, accept, representation)
+        return httpx.Response(200, text=body) if isinstance(body, str) else httpx.Response(200, json=body)
 
     def handle(request):
         calls.append(request)
@@ -35,31 +42,20 @@ def example_api(monkeypatch, tmp_path):
                 return httpx.Response(200, content=gzip.compress((json.dumps(row) + "\n").encode()))
             job_id = path.rsplit("/", 1)[-1]
             source = jobs.get(job_id, "google_search")
-            response = FIXTURES[source]["response"]
-            stored = {
-                "id": job_id,
-                "source": source,
-                "status": "completed",
-                "results": response.get("results", []),
-                "completed_at": "2026-10-20T00:00:00Z",
-                "expires_at": "2026-10-21T00:00:00Z",
-            }
-            if source != "youtube_download":
-                stored["usage"] = response.get("usage", {"credits": 0})
-            return httpx.Response(200, json=stored)
+            return httpx.Response(200, json=stored_result(source, job_id))
         if path.startswith("/v1/"):
             data = json.loads(request.content)
             if path.endswith("/realtime"):
-                return httpx.Response(200, json=FIXTURES[data["source"]]["response"])
+                return formatted(request, FIXTURES[data["source"]]["response"], data["source"])
             if path.endswith("/batch"):
                 receipts = []
                 for index, item in enumerate(data["queries"]):
                     job_id = f"job_docs{index}"
                     jobs[job_id] = item["source"]
                     receipts.append({"id": job_id, "source": item["source"], "status": "pending"})
-                return httpx.Response(200, json={"queries": receipts, "total_credits": 0.02})
+                return formatted(request, {"queries": receipts, "total_credits": 0.02}, "batch")
             jobs["job_docs123"] = data["source"]
-            return httpx.Response(200, json={"id": "job_docs123", "source": data["source"], "status": "pending"})
+            return formatted(request, {"id": "job_docs123", "source": data["source"], "status": "pending"}, "async")
         if path.endswith("/api-access"):
             return httpx.Response(200, json={"sources": list(FIXTURES), "result_origin": "https://results.example"})
         if path.endswith("/balance"):
@@ -78,10 +74,26 @@ def example_api(monkeypatch, tmp_path):
             return httpx.Response(200, json={"currency": "USD", "data": []})
         if "/jobs/" in path:
             if path.endswith("/results"):
+                job_id = path.split("/")[-2]
+                source = jobs.get(job_id, "google_search")
+                if request.headers.get("accept") == "text/plain" or request.headers.get("x-respond-with"):
+                    return formatted(request, stored_result(source, job_id), source)
                 return httpx.Response(
                     302, headers={"location": "https://results.example/result/" + path.split("/")[-2]}
                 )
-            return httpx.Response(200, json={"job": {"id": path.split("/")[-1], "status": "completed"}})
+            job_id = path.split("/")[-1]
+            return formatted(
+                request,
+                {
+                    "job": {
+                        "id": job_id,
+                        "source": jobs.get(job_id, "google_search"),
+                        "status": "completed",
+                        "completedAt": "2026-10-23T00:00:00Z",
+                    }
+                },
+                "status",
+            )
         if "/bulk-jobs" in path:
             job = {
                 "id": "bulk_docs12345",

@@ -228,6 +228,33 @@ def bulk_input(value: Any, *, partial: bool = False) -> dict[str, Any]:
     return data
 
 
+def response_headers(accept: Any, respond_with: Any = None) -> dict[str, str]:
+    if accept not in ("application/json", "text/plain"):
+        raise ValidationError("accept must be application/json or text/plain.")
+    if respond_with not in (None, "markdown"):
+        raise ValidationError("respond_with must be markdown or None.")
+    headers = {"Accept": accept}
+    if respond_with is not None:
+        headers["X-Respond-With"] = respond_with
+    return headers
+
+
+class ResultRedirect:
+    """Distinguish an HTTP redirect from a plain-text response body."""
+
+    def __init__(self, location: str):
+        self.location = location
+
+
+def decode_response(body: bytes, accept: str) -> dict[str, Any] | str:
+    if accept == "text/plain":
+        try:
+            return body.decode("utf-8")
+        except UnicodeDecodeError:
+            raise ProtocolError("The response was not valid UTF-8 text.") from None
+    return decode_json(body)
+
+
 def decode_json(body: bytes) -> dict[str, Any]:
     try:
         value = json.loads(body)

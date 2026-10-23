@@ -18,6 +18,9 @@ from .types import (
     ConsoleJob,
     CreateBulkJobRequest,
     DataQueryResponse,
+    ResponseAccept,
+    ContentRepresentation,
+    MarkdownQueryResult,
     GoogleImagesParams,
     GoogleImagesResponse,
     GoogleNewsParams,
@@ -56,7 +59,17 @@ from .types import (
     YoutubeTranscriptParams,
     YoutubeTranscriptResponse,
 )
-from ._common import SOURCES, bulk_input, identifier, integer, positive, validate_query, result_rows, job_record
+from ._common import (
+    SOURCES,
+    bulk_input,
+    identifier,
+    integer,
+    positive,
+    validate_query,
+    result_rows,
+    job_record,
+    response_headers,
+)
 from .errors import (
     JobFailedError,
     JobPausedError,
@@ -73,17 +86,108 @@ class Resource:
 
 
 class Queries(Resource):
-    def realtime(self, query: RealtimeQuery, *, timeout: float | None = None) -> DataQueryResponse:
+    @overload
+    def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
+    ) -> DataQueryResponse: ...
+    @overload
+    def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+    ) -> str: ...
+    @overload
+    def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> DataQueryResponse | MarkdownQueryResult | str: ...
+    def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> DataQueryResponse | MarkdownQueryResult | str:
+        """Retrieve results as JSON fields, Markdown in JSON, or plain text."""
         return self._client._request(
-            "POST", "/v1/queries/realtime", data=True, body=validate_query(query), timeout=timeout
+            "POST",
+            "/v1/queries/realtime",
+            data=True,
+            body=validate_query(query),
+            timeout=timeout,
+            accept=accept,
+            respond_with=respond_with,
         )
 
-    def submit(self, query: AsyncQuery, *, timeout: float | None = None) -> AsyncSubmission:
+    @overload
+    def submit(
+        self,
+        query: AsyncQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+    ) -> AsyncSubmission: ...
+    @overload
+    def submit(self, query: AsyncQuery, *, timeout: float | None = None, accept: Literal["text/plain"]) -> str: ...
+    @overload
+    def submit(
+        self, query: AsyncQuery, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> AsyncSubmission | str: ...
+    def submit(
+        self, query: AsyncQuery, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> AsyncSubmission | str:
+        """Submit a background query; return a JSON or plain-text receipt."""
         return self._client._request(
-            "POST", "/v1/queries", data=True, body=validate_query(query, async_mode=True), timeout=timeout
+            "POST",
+            "/v1/queries",
+            data=True,
+            body=validate_query(query, async_mode=True),
+            timeout=timeout,
+            accept=accept,
         )
 
-    def batch(self, queries: list[AsyncQuery], *, timeout: float | None = None) -> BatchResponse:
+    @overload
+    def batch(
+        self,
+        queries: list[AsyncQuery],
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+    ) -> BatchResponse: ...
+    @overload
+    def batch(
+        self, queries: list[AsyncQuery], *, timeout: float | None = None, accept: Literal["text/plain"]
+    ) -> str: ...
+    @overload
+    def batch(
+        self, queries: list[AsyncQuery], *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> BatchResponse | str: ...
+    def batch(
+        self, queries: list[AsyncQuery], *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> BatchResponse | str:
+        """Submit a mixed batch; return JSON or plain-text receipts."""
         if not isinstance(queries, list) or not queries:
             raise ValidationError("Provide a non-empty list of queries; plan batch limits apply.")
         return self._client._request(
@@ -92,6 +196,7 @@ class Queries(Resource):
             data=True,
             body={"queries": [validate_query(q, async_mode=True) for q in queries]},
             timeout=timeout,
+            accept=accept,
         )
 
 
@@ -145,11 +250,71 @@ class Public(Resource):
 
 
 class Jobs(Resource):
-    def get(self, job_id: str, *, timeout: float | None = None) -> ConsoleJob:
-        return job_record(self._client._request("GET", "/jobs/" + identifier(job_id), timeout=timeout))
+    @overload
+    def get(
+        self, job_id: str, *, timeout: float | None = None, accept: Literal["application/json"] = "application/json"
+    ) -> ConsoleJob: ...
+    @overload
+    def get(self, job_id: str, *, timeout: float | None = None, accept: Literal["text/plain"]) -> str: ...
+    @overload
+    def get(
+        self, job_id: str, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> ConsoleJob | str: ...
+    def get(
+        self, job_id: str, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> ConsoleJob | str:
+        """Read job status as a record (JSON default) or the full plain-text response."""
+        value = self._client._request("GET", "/jobs/" + identifier(job_id), timeout=timeout, accept=accept)
+        return value if isinstance(value, str) else job_record(value)
 
-    def result(self, job_id: str, *, timeout: float | None = None) -> JobResult:
-        return self._client._result("/jobs/" + identifier(job_id) + "/results", timeout=timeout)
+    @overload
+    def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
+    ) -> JobResult: ...
+    @overload
+    def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+    ) -> str: ...
+    @overload
+    def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> JobResult | MarkdownQueryResult | str: ...
+    def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> JobResult | MarkdownQueryResult | str:
+        """Retrieve completed results; choose JSON, plain text, or Markdown content."""
+        return self._client._result(
+            "/jobs/" + identifier(job_id) + "/results", timeout=timeout, accept=accept, respond_with=respond_with
+        )
 
     def wait(self, job_id: str, *, timeout: float = 300, poll_interval: float = 2) -> ConsoleJob:
         """Poll an existing ID without resubmitting or canceling accepted work."""
@@ -327,6 +492,8 @@ class Google(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleSearchParams],
     ) -> GoogleSearchResponse: ...
     @overload
@@ -334,11 +501,85 @@ class Google(Resource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleSearchParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleSearchParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> GoogleSearchResponse | str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleSearchParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> AsyncSubmission | str: ...
     def search(
         self,
         query: str,
@@ -346,6 +587,8 @@ class Google(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleSearchParams],
     ) -> Any:
         """google_search: https://flashdata.dev/docs/sources/google_search"""
@@ -353,15 +596,18 @@ class Google(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_search", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -372,6 +618,8 @@ class Google(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleImagesParams],
     ) -> GoogleImagesResponse: ...
     @overload
@@ -379,11 +627,85 @@ class Google(Resource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleImagesParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def images(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleImagesParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> str: ...
+    @overload
+    def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> str: ...
+    @overload
+    def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> GoogleImagesResponse | str: ...
+    @overload
+    def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleImagesParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> AsyncSubmission | str: ...
     def images(
         self,
         query: str,
@@ -391,6 +713,8 @@ class Google(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleImagesParams],
     ) -> Any:
         """google_images: https://flashdata.dev/docs/sources/google_images"""
@@ -398,15 +722,18 @@ class Google(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_images", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -417,6 +744,8 @@ class Google(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleNewsParams],
     ) -> GoogleNewsResponse: ...
     @overload
@@ -424,11 +753,85 @@ class Google(Resource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleNewsParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def news(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleNewsParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> str: ...
+    @overload
+    def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> str: ...
+    @overload
+    def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> GoogleNewsResponse | str: ...
+    @overload
+    def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleNewsParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> AsyncSubmission | str: ...
     def news(
         self,
         query: str,
@@ -436,6 +839,8 @@ class Google(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleNewsParams],
     ) -> Any:
         """google_news: https://flashdata.dev/docs/sources/google_news"""
@@ -443,15 +848,18 @@ class Google(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_news", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -462,6 +870,8 @@ class Google(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleShoppingParams],
     ) -> GoogleShoppingResponse: ...
     @overload
@@ -469,11 +879,85 @@ class Google(Resource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleShoppingParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def shopping(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleShoppingParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> str: ...
+    @overload
+    def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> str: ...
+    @overload
+    def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> GoogleShoppingResponse | str: ...
+    @overload
+    def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleShoppingParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> AsyncSubmission | str: ...
     def shopping(
         self,
         query: str,
@@ -481,6 +965,8 @@ class Google(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleShoppingParams],
     ) -> Any:
         """google_shopping: https://flashdata.dev/docs/sources/google_shopping"""
@@ -488,15 +974,18 @@ class Google(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_shopping", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -507,6 +996,8 @@ class Google(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleVideosParams],
     ) -> GoogleVideosResponse: ...
     @overload
@@ -514,11 +1005,85 @@ class Google(Resource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleVideosParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def videos(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleVideosParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> str: ...
+    @overload
+    def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> str: ...
+    @overload
+    def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> GoogleVideosResponse | str: ...
+    @overload
+    def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleVideosParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> AsyncSubmission | str: ...
     def videos(
         self,
         query: str,
@@ -526,6 +1091,8 @@ class Google(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleVideosParams],
     ) -> Any:
         """google_videos: https://flashdata.dev/docs/sources/google_videos"""
@@ -533,15 +1100,18 @@ class Google(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_videos", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -552,8 +1122,22 @@ class Google(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GooglePlacesParams],
     ) -> GooglePlacesResponse: ...
+    @overload
+    def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GooglePlacesParams],
+    ) -> MarkdownQueryResult: ...
     @overload
     def places(
         self,
@@ -562,8 +1146,70 @@ class Google(Resource):
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GooglePlacesParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> str: ...
+    @overload
+    def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> str: ...
+    @overload
+    def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> GooglePlacesResponse | str: ...
+    @overload
+    def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GooglePlacesParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> AsyncSubmission | str: ...
     def places(
         self,
         query: str,
@@ -571,6 +1217,8 @@ class Google(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GooglePlacesParams],
     ) -> Any:
         """google_places: https://flashdata.dev/docs/sources/google_places"""
@@ -578,15 +1226,18 @@ class Google(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_places", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     def pages(
@@ -631,6 +1282,8 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchParams],
     ) -> YoutubeSearchResponse: ...
     @overload
@@ -638,11 +1291,85 @@ class YouTube(Resource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> YoutubeSearchResponse | str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> AsyncSubmission | str: ...
     def search(
         self,
         query: str,
@@ -650,6 +1377,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeSearchParams],
     ) -> Any:
         """youtube_search: https://flashdata.dev/docs/sources/youtube_search"""
@@ -657,15 +1386,18 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_search", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -676,6 +1408,8 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchExtendedParams],
     ) -> YoutubeSearchExtendedResponse: ...
     @overload
@@ -683,11 +1417,85 @@ class YouTube(Resource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def search_extended(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchExtendedParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> str: ...
+    @overload
+    def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> str: ...
+    @overload
+    def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> YoutubeSearchExtendedResponse | str: ...
+    @overload
+    def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> AsyncSubmission | str: ...
     def search_extended(
         self,
         query: str,
@@ -695,6 +1503,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeSearchExtendedParams],
     ) -> Any:
         """youtube_search_extended: https://flashdata.dev/docs/sources/youtube_search_extended"""
@@ -702,15 +1512,18 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_search_extended", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -721,6 +1534,8 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeMetadataParams],
     ) -> YoutubeMetadataResponse: ...
     @overload
@@ -728,11 +1543,85 @@ class YouTube(Resource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def metadata(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeMetadataParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> str: ...
+    @overload
+    def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> str: ...
+    @overload
+    def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> YoutubeMetadataResponse | str: ...
+    @overload
+    def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> AsyncSubmission | str: ...
     def metadata(
         self,
         video_id: str,
@@ -740,6 +1629,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeMetadataParams],
     ) -> Any:
         """youtube_metadata: https://flashdata.dev/docs/sources/youtube_metadata"""
@@ -747,15 +1638,18 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_metadata", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -766,6 +1660,8 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTranscriptParams],
     ) -> YoutubeTranscriptResponse: ...
     @overload
@@ -773,11 +1669,85 @@ class YouTube(Resource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def transcript(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTranscriptParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> str: ...
+    @overload
+    def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> str: ...
+    @overload
+    def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> YoutubeTranscriptResponse | str: ...
+    @overload
+    def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> AsyncSubmission | str: ...
     def transcript(
         self,
         video_id: str,
@@ -785,6 +1755,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeTranscriptParams],
     ) -> Any:
         """youtube_transcript: https://flashdata.dev/docs/sources/youtube_transcript"""
@@ -792,15 +1764,18 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_transcript", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -811,6 +1786,8 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeCaptionsParams],
     ) -> YoutubeCaptionsResponse: ...
     @overload
@@ -818,11 +1795,85 @@ class YouTube(Resource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def captions(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeCaptionsParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> str: ...
+    @overload
+    def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> str: ...
+    @overload
+    def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> YoutubeCaptionsResponse | str: ...
+    @overload
+    def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> AsyncSubmission | str: ...
     def captions(
         self,
         video_id: str,
@@ -830,6 +1881,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeCaptionsParams],
     ) -> Any:
         """youtube_captions: https://flashdata.dev/docs/sources/youtube_captions"""
@@ -837,15 +1890,18 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_captions", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -856,6 +1912,8 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTrainabilityParams],
     ) -> YoutubeTrainabilityResponse: ...
     @overload
@@ -863,11 +1921,85 @@ class YouTube(Resource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def license_check(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTrainabilityParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> str: ...
+    @overload
+    def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> str: ...
+    @overload
+    def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> YoutubeTrainabilityResponse | str: ...
+    @overload
+    def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> AsyncSubmission | str: ...
     def license_check(
         self,
         video_id: str,
@@ -875,6 +2007,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeTrainabilityParams],
     ) -> Any:
         """youtube_trainability: https://flashdata.dev/docs/sources/youtube_trainability"""
@@ -882,15 +2016,18 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_trainability", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -901,6 +2038,8 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeChannelParams],
     ) -> YoutubeChannelResponse: ...
     @overload
@@ -908,11 +2047,85 @@ class YouTube(Resource):
         self,
         handle: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeChannelParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    def channel(
+        self,
+        handle: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeChannelParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> str: ...
+    @overload
+    def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> str: ...
+    @overload
+    def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> YoutubeChannelResponse | str: ...
+    @overload
+    def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeChannelParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> AsyncSubmission | str: ...
     def channel(
         self,
         handle: str,
@@ -920,6 +2133,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeChannelParams],
     ) -> Any:
         """youtube_channel: https://flashdata.dev/docs/sources/youtube_channel"""
@@ -927,15 +2142,18 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_channel", "handle": handle}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -946,8 +2164,22 @@ class YouTube(Resource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSuggestionsParams],
     ) -> YoutubeSuggestionsResponse: ...
+    @overload
+    def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> MarkdownQueryResult: ...
     @overload
     def suggestions(
         self,
@@ -956,8 +2188,70 @@ class YouTube(Resource):
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSuggestionsParams],
     ) -> AsyncSubmission: ...
+    @overload
+    def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> str: ...
+    @overload
+    def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> str: ...
+    @overload
+    def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> YoutubeSuggestionsResponse | str: ...
+    @overload
+    def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> AsyncSubmission | str: ...
     def suggestions(
         self,
         query: str,
@@ -965,6 +2259,8 @@ class YouTube(Resource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeSuggestionsParams],
     ) -> Any:
         """youtube_suggestions: https://flashdata.dev/docs/sources/youtube_suggestions"""
@@ -972,17 +2268,21 @@ class YouTube(Resource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_suggestions", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
+    @overload
     def download(
         self,
         video_id: str,
@@ -990,8 +2290,41 @@ class YouTube(Resource):
         mode: Literal["async"] = "async",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
         **params: Unpack[YoutubeDownloadParams],
-    ) -> AsyncSubmission:
+    ) -> AsyncSubmission: ...
+    @overload
+    def download(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"] = "async",
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        **params: Unpack[YoutubeDownloadParams],
+    ) -> str: ...
+    @overload
+    def download(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"] = "async",
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        **params: Unpack[YoutubeDownloadParams],
+    ) -> AsyncSubmission | str: ...
+    def download(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"] = "async",
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        **params: Unpack[YoutubeDownloadParams],
+    ) -> AsyncSubmission | str:
         """Submit cloud media delivery. Downloads always run in the background."""
         if mode != "async":
             raise ValidationError("Downloads support mode=async only.")
@@ -1000,7 +2333,7 @@ class YouTube(Resource):
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
-        return self._client.queries.submit(payload, timeout=timeout)
+        return self._client.queries.submit(payload, timeout=timeout, accept=accept)
 
 
 class AsyncResource:
@@ -1009,17 +2342,110 @@ class AsyncResource:
 
 
 class AsyncQueries(AsyncResource):
-    async def realtime(self, query: RealtimeQuery, *, timeout: float | None = None) -> DataQueryResponse:
+    @overload
+    async def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
+    ) -> DataQueryResponse: ...
+    @overload
+    async def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+    ) -> str: ...
+    @overload
+    async def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> DataQueryResponse | MarkdownQueryResult | str: ...
+    async def realtime(
+        self,
+        query: RealtimeQuery,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> DataQueryResponse | MarkdownQueryResult | str:
+        """Retrieve results as JSON fields, Markdown in JSON, or plain text."""
         return await self._client._request(
-            "POST", "/v1/queries/realtime", data=True, body=validate_query(query), timeout=timeout
+            "POST",
+            "/v1/queries/realtime",
+            data=True,
+            body=validate_query(query),
+            timeout=timeout,
+            accept=accept,
+            respond_with=respond_with,
         )
 
-    async def submit(self, query: AsyncQuery, *, timeout: float | None = None) -> AsyncSubmission:
+    @overload
+    async def submit(
+        self,
+        query: AsyncQuery,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+    ) -> AsyncSubmission: ...
+    @overload
+    async def submit(
+        self, query: AsyncQuery, *, timeout: float | None = None, accept: Literal["text/plain"]
+    ) -> str: ...
+    @overload
+    async def submit(
+        self, query: AsyncQuery, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> AsyncSubmission | str: ...
+    async def submit(
+        self, query: AsyncQuery, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> AsyncSubmission | str:
+        """Submit a background query; return a JSON or plain-text receipt."""
         return await self._client._request(
-            "POST", "/v1/queries", data=True, body=validate_query(query, async_mode=True), timeout=timeout
+            "POST",
+            "/v1/queries",
+            data=True,
+            body=validate_query(query, async_mode=True),
+            timeout=timeout,
+            accept=accept,
         )
 
-    async def batch(self, queries: list[AsyncQuery], *, timeout: float | None = None) -> BatchResponse:
+    @overload
+    async def batch(
+        self,
+        queries: list[AsyncQuery],
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+    ) -> BatchResponse: ...
+    @overload
+    async def batch(
+        self, queries: list[AsyncQuery], *, timeout: float | None = None, accept: Literal["text/plain"]
+    ) -> str: ...
+    @overload
+    async def batch(
+        self, queries: list[AsyncQuery], *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> BatchResponse | str: ...
+    async def batch(
+        self, queries: list[AsyncQuery], *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> BatchResponse | str:
+        """Submit a mixed batch; return JSON or plain-text receipts."""
         if not isinstance(queries, list) or not queries:
             raise ValidationError("Provide a non-empty list of queries; plan batch limits apply.")
         return await self._client._request(
@@ -1028,6 +2454,7 @@ class AsyncQueries(AsyncResource):
             data=True,
             body={"queries": [validate_query(q, async_mode=True) for q in queries]},
             timeout=timeout,
+            accept=accept,
         )
 
 
@@ -1081,11 +2508,71 @@ class AsyncPublic(AsyncResource):
 
 
 class AsyncJobs(AsyncResource):
-    async def get(self, job_id: str, *, timeout: float | None = None) -> ConsoleJob:
-        return job_record(await self._client._request("GET", "/jobs/" + identifier(job_id), timeout=timeout))
+    @overload
+    async def get(
+        self, job_id: str, *, timeout: float | None = None, accept: Literal["application/json"] = "application/json"
+    ) -> ConsoleJob: ...
+    @overload
+    async def get(self, job_id: str, *, timeout: float | None = None, accept: Literal["text/plain"]) -> str: ...
+    @overload
+    async def get(
+        self, job_id: str, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> ConsoleJob | str: ...
+    async def get(
+        self, job_id: str, *, timeout: float | None = None, accept: ResponseAccept = "application/json"
+    ) -> ConsoleJob | str:
+        """Read job status as a record (JSON default) or the full plain-text response."""
+        value = await self._client._request("GET", "/jobs/" + identifier(job_id), timeout=timeout, accept=accept)
+        return value if isinstance(value, str) else job_record(value)
 
-    async def result(self, job_id: str, *, timeout: float | None = None) -> JobResult:
-        return await self._client._result("/jobs/" + identifier(job_id) + "/results", timeout=timeout)
+    @overload
+    async def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
+    ) -> JobResult: ...
+    @overload
+    async def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+    ) -> str: ...
+    @overload
+    async def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> JobResult | MarkdownQueryResult | str: ...
+    async def result(
+        self,
+        job_id: str,
+        *,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> JobResult | MarkdownQueryResult | str:
+        """Retrieve completed results; choose JSON, plain text, or Markdown content."""
+        return await self._client._result(
+            "/jobs/" + identifier(job_id) + "/results", timeout=timeout, accept=accept, respond_with=respond_with
+        )
 
     async def wait(self, job_id: str, *, timeout: float = 300, poll_interval: float = 2) -> ConsoleJob:
         """Poll an existing ID without resubmitting or canceling accepted work."""
@@ -1269,6 +2756,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleSearchParams],
     ) -> GoogleSearchResponse: ...
     @overload
@@ -1276,11 +2765,85 @@ class AsyncGoogle(AsyncResource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleSearchParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleSearchParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> GoogleSearchResponse | str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleSearchParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleSearchParams],
+    ) -> AsyncSubmission | str: ...
     async def search(
         self,
         query: str,
@@ -1288,6 +2851,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleSearchParams],
     ) -> Any:
         """google_search: https://flashdata.dev/docs/sources/google_search"""
@@ -1295,15 +2860,18 @@ class AsyncGoogle(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_search", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1314,6 +2882,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleImagesParams],
     ) -> GoogleImagesResponse: ...
     @overload
@@ -1321,11 +2891,85 @@ class AsyncGoogle(AsyncResource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleImagesParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def images(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleImagesParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> str: ...
+    @overload
+    async def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> str: ...
+    @overload
+    async def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> GoogleImagesResponse | str: ...
+    @overload
+    async def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleImagesParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def images(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleImagesParams],
+    ) -> AsyncSubmission | str: ...
     async def images(
         self,
         query: str,
@@ -1333,6 +2977,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleImagesParams],
     ) -> Any:
         """google_images: https://flashdata.dev/docs/sources/google_images"""
@@ -1340,15 +2986,18 @@ class AsyncGoogle(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_images", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1359,6 +3008,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleNewsParams],
     ) -> GoogleNewsResponse: ...
     @overload
@@ -1366,11 +3017,85 @@ class AsyncGoogle(AsyncResource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleNewsParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def news(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleNewsParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> str: ...
+    @overload
+    async def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> str: ...
+    @overload
+    async def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> GoogleNewsResponse | str: ...
+    @overload
+    async def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleNewsParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def news(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleNewsParams],
+    ) -> AsyncSubmission | str: ...
     async def news(
         self,
         query: str,
@@ -1378,6 +3103,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleNewsParams],
     ) -> Any:
         """google_news: https://flashdata.dev/docs/sources/google_news"""
@@ -1385,15 +3112,18 @@ class AsyncGoogle(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_news", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1404,6 +3134,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleShoppingParams],
     ) -> GoogleShoppingResponse: ...
     @overload
@@ -1411,11 +3143,85 @@ class AsyncGoogle(AsyncResource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleShoppingParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def shopping(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleShoppingParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> str: ...
+    @overload
+    async def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> str: ...
+    @overload
+    async def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> GoogleShoppingResponse | str: ...
+    @overload
+    async def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleShoppingParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def shopping(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleShoppingParams],
+    ) -> AsyncSubmission | str: ...
     async def shopping(
         self,
         query: str,
@@ -1423,6 +3229,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleShoppingParams],
     ) -> Any:
         """google_shopping: https://flashdata.dev/docs/sources/google_shopping"""
@@ -1430,15 +3238,18 @@ class AsyncGoogle(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_shopping", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1449,6 +3260,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleVideosParams],
     ) -> GoogleVideosResponse: ...
     @overload
@@ -1456,11 +3269,85 @@ class AsyncGoogle(AsyncResource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleVideosParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def videos(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GoogleVideosParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> str: ...
+    @overload
+    async def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> str: ...
+    @overload
+    async def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> GoogleVideosResponse | str: ...
+    @overload
+    async def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GoogleVideosParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def videos(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GoogleVideosParams],
+    ) -> AsyncSubmission | str: ...
     async def videos(
         self,
         query: str,
@@ -1468,6 +3355,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GoogleVideosParams],
     ) -> Any:
         """google_videos: https://flashdata.dev/docs/sources/google_videos"""
@@ -1475,15 +3364,18 @@ class AsyncGoogle(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_videos", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1494,8 +3386,22 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GooglePlacesParams],
     ) -> GooglePlacesResponse: ...
+    @overload
+    async def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GooglePlacesParams],
+    ) -> MarkdownQueryResult: ...
     @overload
     async def places(
         self,
@@ -1504,8 +3410,70 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[GooglePlacesParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> str: ...
+    @overload
+    async def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> str: ...
+    @overload
+    async def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> GooglePlacesResponse | str: ...
+    @overload
+    async def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[GooglePlacesParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def places(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[GooglePlacesParams],
+    ) -> AsyncSubmission | str: ...
     async def places(
         self,
         query: str,
@@ -1513,6 +3481,8 @@ class AsyncGoogle(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[GooglePlacesParams],
     ) -> Any:
         """google_places: https://flashdata.dev/docs/sources/google_places"""
@@ -1520,15 +3490,18 @@ class AsyncGoogle(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "google_places", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     async def pages(
@@ -1573,6 +3546,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchParams],
     ) -> YoutubeSearchResponse: ...
     @overload
@@ -1580,11 +3555,85 @@ class AsyncYouTube(AsyncResource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> YoutubeSearchResponse | str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def search(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchParams],
+    ) -> AsyncSubmission | str: ...
     async def search(
         self,
         query: str,
@@ -1592,6 +3641,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeSearchParams],
     ) -> Any:
         """youtube_search: https://flashdata.dev/docs/sources/youtube_search"""
@@ -1599,15 +3650,18 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_search", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1618,6 +3672,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchExtendedParams],
     ) -> YoutubeSearchExtendedResponse: ...
     @overload
@@ -1625,11 +3681,85 @@ class AsyncYouTube(AsyncResource):
         self,
         query: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def search_extended(
+        self,
+        query: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSearchExtendedParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> str: ...
+    @overload
+    async def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> str: ...
+    @overload
+    async def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> YoutubeSearchExtendedResponse | str: ...
+    @overload
+    async def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def search_extended(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSearchExtendedParams],
+    ) -> AsyncSubmission | str: ...
     async def search_extended(
         self,
         query: str,
@@ -1637,6 +3767,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeSearchExtendedParams],
     ) -> Any:
         """youtube_search_extended: https://flashdata.dev/docs/sources/youtube_search_extended"""
@@ -1644,15 +3776,18 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_search_extended", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1663,6 +3798,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeMetadataParams],
     ) -> YoutubeMetadataResponse: ...
     @overload
@@ -1670,11 +3807,85 @@ class AsyncYouTube(AsyncResource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def metadata(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeMetadataParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> str: ...
+    @overload
+    async def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> str: ...
+    @overload
+    async def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> YoutubeMetadataResponse | str: ...
+    @overload
+    async def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def metadata(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeMetadataParams],
+    ) -> AsyncSubmission | str: ...
     async def metadata(
         self,
         video_id: str,
@@ -1682,6 +3893,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeMetadataParams],
     ) -> Any:
         """youtube_metadata: https://flashdata.dev/docs/sources/youtube_metadata"""
@@ -1689,15 +3902,18 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_metadata", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1708,6 +3924,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTranscriptParams],
     ) -> YoutubeTranscriptResponse: ...
     @overload
@@ -1715,11 +3933,85 @@ class AsyncYouTube(AsyncResource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def transcript(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTranscriptParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> str: ...
+    @overload
+    async def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> str: ...
+    @overload
+    async def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> YoutubeTranscriptResponse | str: ...
+    @overload
+    async def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def transcript(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTranscriptParams],
+    ) -> AsyncSubmission | str: ...
     async def transcript(
         self,
         video_id: str,
@@ -1727,6 +4019,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeTranscriptParams],
     ) -> Any:
         """youtube_transcript: https://flashdata.dev/docs/sources/youtube_transcript"""
@@ -1734,15 +4028,18 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_transcript", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1753,6 +4050,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeCaptionsParams],
     ) -> YoutubeCaptionsResponse: ...
     @overload
@@ -1760,11 +4059,85 @@ class AsyncYouTube(AsyncResource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def captions(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeCaptionsParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> str: ...
+    @overload
+    async def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> str: ...
+    @overload
+    async def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> YoutubeCaptionsResponse | str: ...
+    @overload
+    async def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def captions(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeCaptionsParams],
+    ) -> AsyncSubmission | str: ...
     async def captions(
         self,
         video_id: str,
@@ -1772,6 +4145,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeCaptionsParams],
     ) -> Any:
         """youtube_captions: https://flashdata.dev/docs/sources/youtube_captions"""
@@ -1779,15 +4154,18 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_captions", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1798,6 +4176,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTrainabilityParams],
     ) -> YoutubeTrainabilityResponse: ...
     @overload
@@ -1805,11 +4185,85 @@ class AsyncYouTube(AsyncResource):
         self,
         video_id: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def license_check(
+        self,
+        video_id: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeTrainabilityParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> str: ...
+    @overload
+    async def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> str: ...
+    @overload
+    async def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> YoutubeTrainabilityResponse | str: ...
+    @overload
+    async def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def license_check(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeTrainabilityParams],
+    ) -> AsyncSubmission | str: ...
     async def license_check(
         self,
         video_id: str,
@@ -1817,6 +4271,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeTrainabilityParams],
     ) -> Any:
         """youtube_trainability: https://flashdata.dev/docs/sources/youtube_trainability"""
@@ -1824,15 +4280,18 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_trainability", "video_id": video_id}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1843,6 +4302,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeChannelParams],
     ) -> YoutubeChannelResponse: ...
     @overload
@@ -1850,11 +4311,85 @@ class AsyncYouTube(AsyncResource):
         self,
         handle: str,
         *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeChannelParams],
+    ) -> MarkdownQueryResult: ...
+    @overload
+    async def channel(
+        self,
+        handle: str,
+        *,
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeChannelParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> str: ...
+    @overload
+    async def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> str: ...
+    @overload
+    async def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> YoutubeChannelResponse | str: ...
+    @overload
+    async def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeChannelParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def channel(
+        self,
+        handle: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeChannelParams],
+    ) -> AsyncSubmission | str: ...
     async def channel(
         self,
         handle: str,
@@ -1862,6 +4397,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeChannelParams],
     ) -> Any:
         """youtube_channel: https://flashdata.dev/docs/sources/youtube_channel"""
@@ -1869,15 +4406,18 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_channel", "handle": handle}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
     @overload
@@ -1888,8 +4428,22 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime"] = "realtime",
         callback_url: None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSuggestionsParams],
     ) -> YoutubeSuggestionsResponse: ...
+    @overload
+    async def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> MarkdownQueryResult: ...
     @overload
     async def suggestions(
         self,
@@ -1898,8 +4452,70 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["async"],
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
+        respond_with: None = None,
         **params: Unpack[YoutubeSuggestionsParams],
     ) -> AsyncSubmission: ...
+    @overload
+    async def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: ContentRepresentation | None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> str: ...
+    @overload
+    async def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        respond_with: None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> str: ...
+    @overload
+    async def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> YoutubeSuggestionsResponse | str: ...
+    @overload
+    async def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["realtime"] = "realtime",
+        callback_url: None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: Literal["markdown"],
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> MarkdownQueryResult | str: ...
+    @overload
+    async def suggestions(
+        self,
+        query: str,
+        *,
+        mode: Literal["async"],
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: None = None,
+        **params: Unpack[YoutubeSuggestionsParams],
+    ) -> AsyncSubmission | str: ...
     async def suggestions(
         self,
         query: str,
@@ -1907,6 +4523,8 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["realtime", "async"] = "realtime",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
         **params: Unpack[YoutubeSuggestionsParams],
     ) -> Any:
         """youtube_suggestions: https://flashdata.dev/docs/sources/youtube_suggestions"""
@@ -1914,17 +4532,21 @@ class AsyncYouTube(AsyncResource):
             raise ValidationError("mode must be realtime or async.")
         if mode == "realtime" and callback_url is not None:
             raise ValidationError("Callbacks apply only to background queries.")
+        response_headers(accept, respond_with)
+        if mode == "async" and respond_with is not None:
+            raise ValidationError("Choose Markdown when retrieving completed results with jobs.result().")
         payload: Any = {"source": "youtube_suggestions", "query": query}
         if params:
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
         return await (
-            self._client.queries.submit(payload, timeout=timeout)
+            self._client.queries.submit(payload, timeout=timeout, accept=accept)
             if mode == "async"
-            else self._client.queries.realtime(payload, timeout=timeout)
+            else self._client.queries.realtime(payload, timeout=timeout, accept=accept, respond_with=respond_with)
         )
 
+    @overload
     async def download(
         self,
         video_id: str,
@@ -1932,8 +4554,41 @@ class AsyncYouTube(AsyncResource):
         mode: Literal["async"] = "async",
         callback_url: str | None = None,
         timeout: float | None = None,
+        accept: Literal["application/json"] = "application/json",
         **params: Unpack[YoutubeDownloadParams],
-    ) -> AsyncSubmission:
+    ) -> AsyncSubmission: ...
+    @overload
+    async def download(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"] = "async",
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: Literal["text/plain"],
+        **params: Unpack[YoutubeDownloadParams],
+    ) -> str: ...
+    @overload
+    async def download(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"] = "async",
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        **params: Unpack[YoutubeDownloadParams],
+    ) -> AsyncSubmission | str: ...
+    async def download(
+        self,
+        video_id: str,
+        *,
+        mode: Literal["async"] = "async",
+        callback_url: str | None = None,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        **params: Unpack[YoutubeDownloadParams],
+    ) -> AsyncSubmission | str:
         """Submit cloud media delivery. Downloads always run in the background."""
         if mode != "async":
             raise ValidationError("Downloads support mode=async only.")
@@ -1942,4 +4597,4 @@ class AsyncYouTube(AsyncResource):
             payload["params"] = params
         if callback_url is not None:
             payload["callback_url"] = callback_url
-        return await self._client.queries.submit(payload, timeout=timeout)
+        return await self._client.queries.submit(payload, timeout=timeout, accept=accept)

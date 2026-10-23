@@ -6,6 +6,24 @@ from typing import Any, Literal
 
 from typing_extensions import TypedDict, Required, Unpack
 
+ResponseAccept = Literal["application/json", "text/plain"]
+ContentRepresentation = Literal["markdown"]
+
+MarkdownQueryResult = TypedDict(
+    "MarkdownQueryResult",
+    {
+        "source": Required[str],
+        "status": Required[str],
+        "content": Required[str],
+        "id": str,
+        "usage": dict[str, Any],
+        "created_at": str,
+        "completed_at": str,
+        "expires_at": str,
+    },
+    total=False,
+)
+
 ApiAccess = TypedDict(
     "ApiAccess", {"sources": Required["list[ApiAccessSource]"], "result_origin": Required["str | None"]}, total=False
 )

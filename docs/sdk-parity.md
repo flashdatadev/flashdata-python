@@ -7,6 +7,10 @@ JavaScript share one npm package and implementation. The standalone CLI uses the
 This comparison describes the current source on `main`; it is not a claim that every
 source change is included in previously published v1.0.0 archives.
 
+Python now supports per-request JSON, plain text and Markdown through `accept` and
+`respond_with`. See [response formats](response-formats.md) for usage. This addition
+does not imply format-option support in the other clients listed below.
+
 ## Choose an integration
 
 | Concern | Python | TypeScript | JavaScript | Go | CLI |

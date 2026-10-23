@@ -3,9 +3,12 @@
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
 `FlashData` and `AsyncFlashData` expose the same resource names. Public responses are
-ordinary dictionaries typed by `flashdata.types`. The API preserves wire names such
+JSON dictionaries by default, typed by `flashdata.types`. The API preserves wire names such
 as `createdAt` and `availableCredits`. Source helpers return a source response in realtime
 mode and `AsyncSubmission` in background mode. Each accepts a per-request `timeout`.
+`accept="text/plain"` returns a string. Realtime queries and `jobs.result()` also
+accept `respond_with="markdown"`, returning `MarkdownQueryResult` for JSON. See
+[response formats](response-formats.md) for supported methods and examples.
 
 | Source | Python helper | Main input |
 | --- | --- | --- |

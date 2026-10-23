@@ -5,7 +5,19 @@ import ssl
 from pathlib import Path
 from typing import Any
 import httpx
-from ._common import api_error, decode_json, origin, positive, secret_values, signed_url, integer
+from ._common import (
+    api_error,
+    decode_json,
+    decode_response,
+    origin,
+    positive,
+    secret_values,
+    signed_url,
+    integer,
+    response_headers,
+    ResultRedirect,
+)
+from .types import ResponseAccept, ContentRepresentation
 from .errors import (
     ConnectionError,
     ProtocolError,
@@ -100,6 +112,8 @@ class AsyncFlashData:
         public: bool = False,
         timeout: float | None = None,
         redirect: bool = False,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
     ) -> Any:
         if not public and not self._key:
             raise ValidationError("Set FLASHDATA_API_KEY or pass api_key before calling an authenticated endpoint.")
@@ -107,7 +121,8 @@ class AsyncFlashData:
             positive(timeout, "timeout")
         base = self.data_url if data else self.management_url
         url = base + ("" if data else "/v2") + path
-        headers = {"Accept": "application/json", "User-Agent": "flashdata-python/1.0.0"}
+        headers = response_headers(accept, respond_with)
+        headers["User-Agent"] = "flashdata-python/1.0.0"
         if not public:
             headers["X-API-Key"] = self._key
         try:
@@ -123,11 +138,11 @@ class AsyncFlashData:
                     location = response.headers.get("location")
                     if not location:
                         raise ProtocolError("Signed result redirect is missing its location.")
-                    return location
+                    return ResultRedirect(location)
                 raw = await self._read(response)
                 if not 200 <= response.status_code < 300:
                     raise api_error(response, raw, (self._key,) + secret_values(body))
-                return decode_json(raw)
+                return decode_response(raw, accept)
         except httpx.TimeoutException:
             if method != "GET":
                 raise SubmissionUnknownError(
@@ -141,16 +156,30 @@ class AsyncFlashData:
                 ) from None
             raise ConnectionError("Network request failed.") from None
 
-    async def _result(self, path: str, *, binary: bool = False, timeout: float | None = None) -> Any:
-        location = await self._request("GET", path, redirect=True, timeout=timeout)
-        if not isinstance(location, str):
-            # Supports a future direct JSON response without exposing credentials to storage.
+    async def _result(
+        self,
+        path: str,
+        *,
+        binary: bool = False,
+        timeout: float | None = None,
+        accept: ResponseAccept = "application/json",
+        respond_with: ContentRepresentation | None = None,
+    ) -> Any:
+        location = await self._request(
+            "GET",
+            path,
+            redirect=accept == "application/json" and respond_with is None,
+            timeout=timeout,
+            accept=accept,
+            respond_with=respond_with,
+        )
+        if not isinstance(location, ResultRedirect):
             if binary:
                 raise ProtocolError("Expected a signed result redirect.")
             return location
         if self._result_origin is None:
             self._result_origin = (await self.account.access(timeout=timeout)).get("result_origin")
-        url = signed_url(location, self._result_origin)
+        url = signed_url(location.location, self._result_origin)
         try:
             async with self._storage.stream(
                 "GET",

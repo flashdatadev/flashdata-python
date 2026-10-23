@@ -82,19 +82,28 @@ def main():
         run([str(python), "-m", "pip", "install", "--disable-pip-version-check", "--no-input", str(wheel)], consumer)
         smoke = consumer / "smoke.py"
         smoke.write_text(
-            """from pathlib import Path
+            r"""from pathlib import Path
 import asyncio
 import httpx
 import flashdata
 from flashdata import FlashData, AsyncFlashData
 assert Path(flashdata.__file__).is_relative_to(Path(__file__).parent / "venv")
 def handle(request):
+    if request.headers.get("accept")=="text/plain":
+        return httpx.Response(200,text="Source: google_search\nStatus: done\n")
+    if request.headers.get("x-respond-with")=="markdown":
+        return httpx.Response(200,json={"source":"google_search","status":"done","content":"# Coffee\n"})
     return httpx.Response(200,json={"source":"google_search","status":"done","created_at":"now","usage":{"credits":0},"results":[{"organic":[{"title":"Coffee"}]}]})
 with FlashData(api_key="offline-key",transport=httpx.MockTransport(handle)) as client:
     assert client.google.search("coffee")["results"][0]["organic"][0]["title"]=="Coffee"
+    assert client.google.search("coffee",respond_with="markdown")["content"]=="# Coffee\n"
+    assert isinstance(client.google.search("coffee",accept="text/plain"),str)
+    assert isinstance(client.jobs.result("job_example",accept="text/plain",respond_with="markdown"),str)
 async def main():
     async with AsyncFlashData(api_key="offline-key",transport=httpx.MockTransport(handle)) as client:
         assert (await client.google.search("coffee"))["status"]=="done"
+        assert (await client.google.search("coffee",respond_with="markdown"))["content"]=="# Coffee\n"
+        assert isinstance(await client.google.search("coffee",accept="text/plain",respond_with="markdown"),str)
 asyncio.run(main())
 """,
             encoding="utf-8",
@@ -104,15 +113,30 @@ asyncio.run(main())
         assert "FlashData docs" in run([str(python), "offline.py"], consumer)
         typed = consumer / "consumer.py"
         typed.write_text(
-            """from flashdata import FlashData
+            """from flashdata import FlashData, AsyncFlashData, MarkdownQueryResult, ResponseAccept
+from typing_extensions import assert_type
 from flashdata.types import CreateBulkJobRequest, StorageConfig
 storage: StorageConfig={"storage_type":"s3","storage_url":"bucket"}
 request: CreateBulkJobRequest={"source":"youtube_download","options":{"storage":storage}}
 def check(client: FlashData) -> str:
     response=client.google.search("coffee")
     receipt=client.google.search("coffee",mode="async")
+    assert_type(client.google.search("coffee",respond_with="markdown"),MarkdownQueryResult)
+    assert_type(client.google.search("coffee",accept="text/plain"),str)
+    assert_type(client.youtube.transcript("dQw4w9WgXcQ",accept="text/plain",respond_with="markdown"),str)
+    assert_type(client.queries.submit({"source":"google_search","query":"coffee"},accept="text/plain"),str)
+    assert_type(client.queries.batch([{"source":"google_search","query":"coffee"}],accept="text/plain"),str)
+    assert_type(client.jobs.get("job_example",accept="text/plain"),str)
+    assert_type(client.jobs.result("job_example",respond_with="markdown"),MarkdownQueryResult)
     client.jobs.wait(receipt["id"])
     return response["status"]
+async def check_async(client: AsyncFlashData, accept: ResponseAccept) -> None:
+    assert_type(await client.google.search("coffee",respond_with="markdown"),MarkdownQueryResult)
+    assert_type(await client.youtube.transcript("dQw4w9WgXcQ",accept="text/plain"),str)
+    assert_type(await client.jobs.result("job_example",accept="text/plain",respond_with="markdown"),str)
+    result=await client.google.search("coffee",accept=accept)
+    if isinstance(result,str):
+        print(result)
 """,
             encoding="utf-8",
         )

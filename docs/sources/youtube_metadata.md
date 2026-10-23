@@ -22,6 +22,10 @@ Run `python examples/youtube_metadata.py dQw4w9WgXcQ --output artifacts/youtube_
 
 `video_id` is required. Source options are keyword arguments, or entries in `params` when using `queries`. Data helpers default to realtime; pass `mode="async"` for background work. `timeout` controls the HTTP request.
 
+JSON is the default. Use `accept="text/plain"` for text, or `respond_with="markdown"`
+for Markdown content in realtime results. For background work, choose Markdown when
+reading the completed result. See [response formats](../response-formats.md).
+
 | Option | Type / constraints | Default |
 | --- | --- | --- |
 | `include_formats` | boolean | true |

@@ -29,6 +29,10 @@ Configure `FLASHDATA_STORAGE_FILE` first; see [storage](../storage.md). Delivery
 
 `video_id` is required. Source options are keyword arguments, or entries in `params` when using `queries`. Downloads default to `mode="async"`; realtime download is unsupported.
 
+Use `accept="text/plain"` for a text receipt. Choose Markdown for the completed
+manifest with `jobs.result(..., respond_with="markdown")`. Media files keep their
+original format. See [response formats](../response-formats.md).
+
 | Option | Type / constraints | Default |
 | --- | --- | --- |
 | `download_type` | `audio_video`, `video`, `audio` | "audio_video" |

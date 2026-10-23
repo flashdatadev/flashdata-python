@@ -4,7 +4,7 @@
 
 ## Submit, save, wait, retrieve
 
-Stored background results have `id`, `source`, `status`, `results`, `completed_at`, and
+By default, stored background results have `id`, `source`, `status`, `results`, `completed_at`, and
 `expires_at`. Data results also include `usage`; media delivery receipts may omit it.
 Unlike realtime responses, stored results do not include a guaranteed `created_at`.
 
@@ -27,12 +27,19 @@ HTTP response's `job` property. `wait()` returns that record on completion or ra
 `JobFailedError` with `.job` on failure. A polling timeout retains `.job_id` and leaves
 the server job running. Resume reads with the same ID instead of resubmitting.
 
-`jobs.result()` retrieves a JSON object with `id`, `source`, `status`, `results`, `usage`,
+By default, `jobs.result()` retrieves a JSON object with `id`, `source`, `status`, `results`, `usage`,
 `completed_at`, and `expires_at`. Decode the source payloads in `results` using the same
 field paths as realtime queries.
 The helper checks the signed-storage origin advertised by authenticated API discovery
 and never forwards API credentials to storage. Read completed results within the
 service's 24-hour retention window. 409 means not ready; 410 means expired.
+
+## Response formats
+
+Use `accept="text/plain"` on submissions, batches, job status or completed results
+when you want a string. Keep JSON receipts to save IDs programmatically.
+`respond_with="markdown"` applies when retrieving completed content with `jobs.result()`.
+See [response formats](response-formats.md) for examples.
 
 ## Submit a mixed batch
 

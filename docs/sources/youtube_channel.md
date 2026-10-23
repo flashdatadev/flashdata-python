@@ -23,6 +23,10 @@ Run `python examples/youtube_channel.py @freecodecamp --output artifacts/youtube
 
 `handle` is required. Source options are keyword arguments, or entries in `params` when using `queries`. Data helpers default to realtime; pass `mode="async"` for background work. `timeout` controls the HTTP request.
 
+JSON is the default. Use `accept="text/plain"` for text, or `respond_with="markdown"`
+for Markdown content in realtime results. For background work, choose Markdown when
+reading the completed result. See [response formats](../response-formats.md).
+
 | Option | Type / constraints | Default |
 | --- | --- | --- |
 | `video_limit` | integer; 1–100 | 20 |

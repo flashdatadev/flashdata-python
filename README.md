@@ -88,9 +88,39 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
             print(hit["title"], hit["link"])
 ```
 
-Responses are ordinary dictionaries. `response["results"]` contains source payloads:
+By default, responses are ordinary dictionaries. `response["results"]` contains source payloads:
 Google web hits are in each payload's `organic` list. Other sources have their own
 fields. Credits charged for the request are in `response["usage"]["credits"]`.
+
+## Choose a response format
+
+JSON dictionaries remain the default. Set `accept="text/plain"` to get a string,
+or `respond_with="markdown"` to get Markdown content. Both clients support these options.
+
+| `accept` | `respond_with` | Result |
+| --- | --- | --- |
+| `"application/json"` (default) | Omitted | Dictionary with original `results` |
+| `"text/plain"` | Omitted | Original fields as text |
+| `"application/json"` (default) | `"markdown"` | Dictionary with Markdown in `content` |
+| `"text/plain"` | `"markdown"` | Metadata followed by Markdown |
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.google.search("vector databases", respond_with="markdown")
+    print(response["content"])
+    text = client.youtube.transcript(
+        "dQw4w9WgXcQ", accept="text/plain", respond_with="markdown"
+    )
+    print(text)
+```
+
+`accept` also works on background submissions, batches and `jobs.get()`.
+Choose Markdown for completed jobs with `jobs.result(job_id, respond_with="markdown")`.
+Formatting a completed result does not run another query or charge query credits.
+See [response formats](docs/response-formats.md) for examples and supported methods.
 
 ## Follow industry news
 

@@ -49,6 +49,12 @@ A sync client can be reused between threads; do not close it while requests are 
 Create an async client inside the event loop that will use it, and do not share it across
 event loops. Canceling a coroutine does not cancel an accepted server job.
 
+## Response formats
+
+JSON is the default. Pass `accept="text/plain"` for a string, or
+`respond_with="markdown"` for Markdown content in realtime queries and completed
+results. Both clients accept the same [response-format options](response-formats.md).
+
 ## Async requests
 
 ```python

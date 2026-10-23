@@ -5,8 +5,10 @@ from pathlib import Path
 import re
 import runpy
 import sys
+from copy import deepcopy
 
 import pytest
+from response_fixtures import STORED_CASES
 
 ROOT = Path(__file__).parents[1]
 EXAMPLES = json.loads((ROOT / "tests/fixtures/source-examples.json").read_text())
@@ -109,6 +111,60 @@ def test_documentation_relative_links_exist():
                 continue
             assert (page.parent / target.split("#")[0]).exists(), (page, target)
     assert len(BLOCKS) >= 20
+
+
+@pytest.mark.parametrize("source,value", [("google_search", "vector databases"), ("youtube_transcript", "dQw4w9WgXcQ")])
+@pytest.mark.parametrize("accept", ["application/json", "text/plain"])
+@pytest.mark.parametrize("markdown", [False, True])
+def test_response_format_example_exports_selected_body(
+    source, value, accept, markdown, example_api, monkeypatch, tmp_path
+):
+    output = tmp_path / "response.txt"
+    flags = ["--respond-with", "markdown"] if markdown else []
+    monkeypatch.setattr(
+        sys, "argv", ["response_formats.py", source, value, "--accept", accept, "--output", str(output), *flags]
+    )
+    runpy.run_path(str(ROOT / "examples/response_formats.py"), run_name="__main__")
+    body = output.read_text(encoding="utf-8")
+    if accept == "application/json":
+        assert ("content" if markdown else "results") in json.loads(body)
+    else:
+        assert ("Markdown Content:" if markdown else "Results:") in body
+    assert len(example_api) == 1
+    assert example_api[0].headers["accept"] == accept
+    assert example_api[0].headers.get("x-respond-with") == ("markdown" if markdown else None)
+
+
+@pytest.mark.parametrize("source", list(EXAMPLES))
+@pytest.mark.parametrize("async_", [False, True], ids=["sync", "async"])
+async def test_documentation_job_fixtures_preserve_submitted_identity_and_metadata(source, async_, example_api):
+    import inspect
+    from flashdata import FlashData, AsyncFlashData
+
+    async def call(method, *args, **kwargs):
+        value = method(*args, **kwargs)
+        return await value if inspect.isawaitable(value) else value
+
+    client = (AsyncFlashData if async_ else FlashData)()
+    try:
+        receipt = await call(client.queries.submit, EXAMPLES[source]["request"])
+        job_id = receipt["id"]
+        completed = await call(client.jobs.wait, job_id)
+        status = await call(client.jobs.get, job_id, accept="text/plain")
+        assert completed["id"] == job_id and completed["source"] == source
+        assert completed["status"] == "completed"
+        assert f'Id: "{job_id}"' in status and f'Source: "{source}"' in status and 'Status: "completed"' in status
+        for case in STORED_CASES[source]:
+            result = await call(client.jobs.result, job_id, accept=case["accept"], respond_with=case["respond_with"])
+            expected = deepcopy(case["response"])
+            if isinstance(expected, dict):
+                expected["id"] = job_id
+            else:
+                expected = expected.replace("job_fixture0001", job_id)
+            assert result == expected
+        assert len([req for req in example_api if req.method == "POST"]) == 1
+    finally:
+        await call(client.aclose if async_ else client.close)
 
 
 def test_source_guides_cover_every_validated_parameter():

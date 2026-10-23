@@ -78,9 +78,39 @@ with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
             print(hit["title"], hit["link"])
 ```
 
-响应是普通字典。外层 `response["results"]` 包含各数据源的结果对象；
+默认响应是普通字典。外层 `response["results"]` 包含各数据源的结果对象；
 Google 网页搜索条目位于其中的 `organic` 列表中。其他数据源使用各自的字段结构。
 本次请求消耗的积分（Credits）位于 `response["usage"]["credits"]`。
+
+## 选择响应格式
+
+默认返回 JSON 字典。设置 `accept="text/plain"` 返回字符串；
+设置 `respond_with="markdown"` 选择 Markdown 内容。同步与异步客户端均支持这些选项。
+
+| `accept` | `respond_with` | 返回值 |
+| --- | --- | --- |
+| `"application/json"`（默认） | 省略 | 包含原始 `results` 的字典 |
+| `"text/plain"` | 省略 | 原始字段的文本形式 |
+| `"application/json"`（默认） | `"markdown"` | Markdown 位于 `content` 字段的字典 |
+| `"text/plain"` | `"markdown"` | 元数据及 Markdown 内容 |
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.google.search("vector databases", respond_with="markdown")
+    print(response["content"])
+    text = client.youtube.transcript(
+        "dQw4w9WgXcQ", accept="text/plain", respond_with="markdown"
+    )
+    print(text)
+```
+
+后台提交、批量提交及 `jobs.get()` 也支持 `accept`。
+后台任务的 Markdown 内容请通过 `jobs.result(job_id, respond_with="markdown")` 获取。
+更换已完成结果的格式不会重新查询或消耗查询积分。
+详见[响应格式指南](docs/response-formats.md)。
 
 ## 跟踪行业新闻
 

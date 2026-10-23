@@ -3,7 +3,7 @@
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
 Build applications with Google search and YouTube data using Python 3.10+.
-Choose a source, make a request, and work with ordinary dictionaries. Both sync and
+Choose a source and work with JSON dictionaries, plain text or Markdown. Both sync and
 async clients cover realtime queries, background jobs, batch submission, and bulk files.
 
 Start with [installation and your first request](getting-started.md), or choose a
@@ -23,6 +23,7 @@ sources/index
 :maxdepth: 1
 
 client
+response-formats
 jobs
 pagination
 bulk
