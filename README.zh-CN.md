@@ -41,7 +41,7 @@
 pip install flashdata
 ```
 
-以上命令需在 FlashData 正式发布到 PyPI 后使用。发布前的本地测试请参阅[从源码安装](#从源码安装)。
+纯文本与 Markdown 响应选项需要 1.1.0 或更新版本。开发时可使用[源码安装](#从源码安装)。
 
 ## 配置 API 密钥
 
@@ -83,6 +83,8 @@ Google 网页搜索条目位于其中的 `organic` 列表中。其他数据源�
 本次请求消耗的积分（Credits）位于 `response["usage"]["credits"]`。
 
 ## 选择响应格式
+
+需要 `flashdata` 1.1.0 或更新版本。
 
 默认返回 JSON 字典。设置 `accept="text/plain"` 返回字符串；
 设置 `respond_with="markdown"` 选择 Markdown 内容。同步与异步客户端均支持这些选项。

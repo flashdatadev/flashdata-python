@@ -2,6 +2,17 @@
 
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
+## Install
+
+Use Python 3.10 or newer:
+
+```sh
+python -m pip install --upgrade "flashdata>=1.1.0"
+```
+
+Version 1.1.0 adds plain-text and Markdown responses. See the
+[release notes](release-notes-1.1.0.md).
+
 ## Install from source
 
 In the `flashdata-python` checkout, create an environment and install the package:
@@ -15,7 +26,7 @@ python -m pip install .
 
 On PowerShell, activate with `.venv\Scripts\Activate.ps1`, then run the same pip command.
 Use Python 3.10 or newer. Development dependencies are optional; applications only need
-the package's runtime dependencies. Source installation is supported before the PyPI release.
+the package's runtime dependencies.
 
 ## Authenticate
 

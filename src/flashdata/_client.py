@@ -121,7 +121,7 @@ class FlashData:
         base = self.data_url if data else self.management_url
         url = base + ("" if data else "/v2") + path
         headers = response_headers(accept, respond_with)
-        headers["User-Agent"] = "flashdata-python/1.0.0"
+        headers["User-Agent"] = "flashdata-python/1.1.0"
         if not public:
             headers["X-API-Key"] = self._key
         try:

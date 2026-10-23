@@ -11,7 +11,7 @@ discovery and bulk download CLIs, saved bulk job records, preserved concurrent p
 results, validated waiting arguments before submission, fixed initial cursor loops,
 added package-consumer verification, and linked every guide to official FlashData pages.
 
-## Unreleased
+## 1.1.0 — 2026-10-23
 
 - Match source-helper type hints to realtime/background restrictions, including callbacks.
   Check valid return types and rejected combinations for both clients.
@@ -28,7 +28,7 @@ added package-consumer verification, and linked every guide to official FlashDat
 
 Align English/Chinese workflow navigation with all SDKs and the CLI. Bulk examples now reserve exports and recovery records before API calls, sync accepted IDs, preserve orphaned records, check every item status and recover without replay. Add an MP3 audio variant and update the side-by-side comparison.
 
-## 1.0.0 — local release candidate
+## 1.0.0
 
 - Document explicit `api_key=os.getenv("FLASHDATA_API_KEY")` initialization consistently
   across the README, guides, and authenticated CLI examples.
@@ -46,5 +46,3 @@ Align English/Chinese workflow navigation with all SDKs and the CLI. Bulk exampl
 - Bulk create, streaming file upload, start, pause, resume, update, cancel, progress, manifest and gzip NDJSON parts.
 - Account access, balance, pricing, limits, usage and public discovery.
 - Documentation, runnable examples, offline tests, packaging and CI configuration.
-
-GitHub and package-registry publication have not been performed.

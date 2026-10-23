@@ -46,8 +46,8 @@ and AI model calls.
 pip install flashdata
 ```
 
-This command requires FlashData's official PyPI publication. For local testing before
-release, use [installation from source](#install-from-source).
+Use version 1.1.0 or newer for plain-text and Markdown response options.
+For development, see [installation from source](#install-from-source).
 
 ## Configure your API key
 
@@ -93,6 +93,8 @@ Google web hits are in each payload's `organic` list. Other sources have their o
 fields. Credits charged for the request are in `response["usage"]["credits"]`.
 
 ## Choose a response format
+
+Available in `flashdata` 1.1.0 or newer.
 
 JSON dictionaries remain the default. Set `accept="text/plain"` to get a string,
 or `respond_with="markdown"` to get Markdown content. Both clients support these options.
