@@ -206,6 +206,8 @@ Captions default to an uploaded track (`auto=False`); transcripts default to an 
 track (`auto=True`). Choose a language and track that exist on the video. Missing tracks
 return an API error; the service does not generate or translate them.
 
+Transcript and captions accept one language or a list of 1–10 codes. Omit the language to prefer `en-orig`, then `en`. Multi-language results include available tracks and per-language errors. See [subtitle languages](docs/sources/youtube_transcript.md).
+
 ## Use asyncio
 
 ```python
@@ -520,5 +522,3 @@ python scripts/verify_package.py
 Tests use mock transports and a local HTTP server by default. Explicit opt-in tests
 exercise live APIs; see [contributing](CONTRIBUTING.md). The project is MIT licensed.
 Report sensitive issues through [the security policy](SECURITY.md).
-Transcript and captions accept one language or a list of 1–10 codes. Omit the language to prefer `en-orig`, then `en`. Multi-language results include available tracks and per-language errors. See [subtitle languages](docs/sources/youtube_transcript.md).
-
