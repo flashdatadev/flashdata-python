@@ -30,10 +30,39 @@ reading the completed result. See [response formats](../response-formats.md).
 
 | Option | Type / constraints | Default |
 | --- | --- | --- |
-| `language` | string; pattern `^[A-Za-z0-9-]+$` | "en" |
+| `language` | string or array of 1–10 distinct codes | `en-orig`, then `en` |
 | `auto` | boolean | false |
 
-`auto` defaults to `True` for transcripts and `False` for captions. The example selects an uploaded English track explicitly, so it can be run on the same video as the captions example. Language selection has no automatic translation or fallback.
+Omit `language` to prefer `en-orig`, falling back to `en` and returning one track.
+A string such as `"en"` selects that exact language and keeps the single-track response.
+An array of 1–10 distinct codes, including a one-element array, returns `tracks` and
+`errors` inside each result. Each code must match `[A-Za-z0-9-]{1,35}`.
+
+Read successful tracks even when another language fails. Each error includes
+`languageCode`, `code` (`language_unavailable` or `retrieval_failed`) and `message`.
+Both lists preserve request order; if all requested languages fail, `tracks` is empty.
+Video-level extraction failures still fail the request. Explicit languages never fall
+back to other languages. `auto` selects one caption source for the whole request:
+`true` for automatic captions, `false` for uploaded captions. It defaults to `true`
+for transcripts and `false` for captions, with no switch between the two.
+
+
+## Multiple languages
+
+```python
+import os
+from flashdata import FlashData
+
+with FlashData(api_key=os.getenv("FLASHDATA_API_KEY")) as client:
+    response = client.youtube.captions("aircAruvnKk", language=["en", "es"])
+    for result in response["results"]:
+        for track in result.get("tracks", []):
+            print(track["languageCode"], track["fullText"])
+        for error in result.get("errors", []):
+            print(error["languageCode"], error["code"], error["message"])
+```
+
+The same language array works with realtime, async, batch and bulk requests.
 
 ## Use at scale
 

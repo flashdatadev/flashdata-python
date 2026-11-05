@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Support single or multiple transcript/caption languages, omitted-language fallback and per-language results. Other source APIs are unchanged.
+
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
 Final local release check: verified Python 3.10/3.12, rejected API-key control characters

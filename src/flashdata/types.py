@@ -672,9 +672,11 @@ YoutubeMetadataParams = TypedDict(
     "YoutubeMetadataParams", {"include_formats": "bool", "include_chapters": "bool"}, total=False
 )
 
-YoutubeTranscriptParams = TypedDict("YoutubeTranscriptParams", {"language": "str", "auto": "bool"}, total=False)
+YoutubeTranscriptParams = TypedDict(
+    "YoutubeTranscriptParams", {"language": "str | list[str]", "auto": "bool"}, total=False
+)
 
-YoutubeCaptionsParams = TypedDict("YoutubeCaptionsParams", {"language": "str", "auto": "bool"}, total=False)
+YoutubeCaptionsParams = TypedDict("YoutubeCaptionsParams", {"language": "str | list[str]", "auto": "bool"}, total=False)
 
 YoutubeTrainabilityParams = TypedDict("YoutubeTrainabilityParams", {}, total=False)
 

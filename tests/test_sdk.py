@@ -94,6 +94,63 @@ async def test_batch_preserves_each_source_and_false(client_factory):
     assert json.loads(calls[-1].content)["params"] == {"include_formats": False, "include_chapters": False}
 
 
+@pytest.mark.parametrize("source", ["youtube_transcript", "youtube_captions"])
+@pytest.mark.parametrize("language", [None, "en", ["en"], ["en", "es"], list("abcdefghij")])
+async def test_subtitle_languages_all_workflows(client_factory, source, language):
+    payload = {
+        "videoId": "aircAruvnKk",
+        "tracks": [{"languageCode": "en", "fullText": "Example"}],
+        "errors": [{"languageCode": "es", "code": "language_unavailable", "message": "No Spanish track"}],
+    }
+    body = {"source": source, "status": "done", "results": [payload], "usage": {"credits": 0.01}}
+    client, calls = client_factory(lambda req: httpx.Response(200, json=body))
+    params = {"auto": False, **({"language": language} if language is not None else {})}
+    query = {"source": source, "video_id": "aircAruvnKk", "params": params}
+    result = await invoke(getattr(client.youtube, source.removeprefix("youtube_")), "aircAruvnKk", **params)
+    assert result == body
+    await invoke(client.queries.submit, query)
+    await invoke(client.queries.batch, [query])
+    await invoke(client.bulk.create, {"source": source, "options": params})
+    assert [json.loads(call.content) for call in calls] == [
+        query,
+        query,
+        {"queries": [query]},
+        {"source": source, "options": params},
+    ]
+
+
+@pytest.mark.parametrize("source", ["youtube_transcript", "youtube_captions"])
+@pytest.mark.parametrize("language", [None, "", "en,es", "a" * 36, [], ["en", "en"], ["en", None], list("abcdefghijk")])
+async def test_invalid_subtitle_languages_never_dispatch(client_factory, source, language):
+    client, calls = client_factory()
+    query = {"source": source, "video_id": "aircAruvnKk", "params": {"language": language}}
+    for fn, value in [
+        (client.queries.realtime, query),
+        (client.queries.submit, query),
+        (client.queries.batch, [query]),
+        (client.bulk.create, {"source": source, "options": query["params"]}),
+    ]:
+        with pytest.raises(ValidationError):
+            await invoke(fn, value)
+    assert not calls
+
+
+async def test_subtitle_all_failed_and_other_sources_unchanged(client_factory):
+    body = {
+        "source": "youtube_captions",
+        "status": "done",
+        "results": [
+            {"tracks": [], "errors": [{"languageCode": "en", "code": "retrieval_failed", "message": "Unavailable"}]}
+        ],
+    }
+    client, calls = client_factory(lambda req: httpx.Response(200, json=body))
+    assert await invoke(client.youtube.captions, "aircAruvnKk", language=["en"]) == body
+    assert len(calls) == 1
+    with pytest.raises(ValidationError):
+        await invoke(client.youtube.suggestions, "hello", language=["en", "es"])
+    assert len(calls) == 1
+
+
 @pytest.mark.parametrize(
     "query",
     [
