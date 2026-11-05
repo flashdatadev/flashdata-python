@@ -2,13 +2,13 @@
 
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
 
-The official package is `flashdata` for Python 3.10+. Version 1.1.0 adds JSON,
-plain-text and Markdown response options. Read the [release notes](release-notes-1.1.0.md)
-and [format examples](response-formats.md). Existing calls keep their original
-JSON response defaults.
+The official package is `flashdata` for Python 3.10+.
+Version 1.2.0 adds multiple transcript/caption languages and per-language results.
+Read the [release notes](release-notes-1.2.0.md). Existing single-language calls and
+JSON response defaults remain compatible.
 
-The [GitHub release](https://github.com/flashdatadev/flashdata-python/releases/tag/v1.1.0)
-provides packages from the tagged source. Published registry versions are listed on
+The [GitHub release](https://github.com/flashdatadev/flashdata-python/releases/tag/v1.2.0)
+provides packages from the tagged source. PyPI upload of 1.2.0 is handled manually. Published registry versions are listed on
 [PyPI](https://pypi.org/project/flashdata/). GitHub wheels can also be installed directly with pip.
 
 ## Maintainer checks

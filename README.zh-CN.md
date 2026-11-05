@@ -1,5 +1,7 @@
 # FlashData Python SDK
 
+转录与字幕的多语言请求需要 1.2.0 或更新版本。
+
 [English](https://github.com/flashdatadev/flashdata-python/blob/main/README.md) | [简体中文](https://github.com/flashdatadev/flashdata-python/blob/main/README.zh-CN.md)
 
 [FlashData](https://flashdata.dev) · [API 文档](https://flashdata.dev/docs)

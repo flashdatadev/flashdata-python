@@ -1,5 +1,7 @@
 # FlashData Python SDK
 
+Multiple transcript/caption languages require version 1.2.0 or newer.
+
 [English](https://github.com/flashdatadev/flashdata-python/blob/main/README.md) | [简体中文](https://github.com/flashdatadev/flashdata-python/blob/main/README.zh-CN.md)
 
 [FlashData](https://flashdata.dev) · [API documentation](https://flashdata.dev/docs)
