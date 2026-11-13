@@ -311,6 +311,8 @@ and `youtube_trainability`; each job applies one set of options to all IDs. See 
 
 ## Download YouTube videos in bulk
 
+For a single-video quickstart, MP3 audio, clips, S3/R2 delivery and recoverable bulk scripts, use the [YouTube Video Download API Toolkit](https://github.com/flashdatadev/youtube-video-download-api). It builds on this SDK and includes a real browser download demo.
+
 Create `video-ids.txt` with one video ID per line:
 
 ```text
