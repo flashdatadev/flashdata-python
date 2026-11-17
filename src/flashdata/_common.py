@@ -25,7 +25,16 @@ BULK_SOURCES = (
     "youtube_trainability",
     "youtube_download",
 )
-SECRET_KEYS = {"api_key", "access_key", "secret_key", "private_key", "sas_token", "authorization", "x-api-key"}
+SECRET_KEYS = {
+    "api_key",
+    "access_key",
+    "secret_key",
+    "session_token",
+    "private_key",
+    "sas_token",
+    "authorization",
+    "x-api-key",
+}
 
 
 def positive(value: float, name: str) -> float:

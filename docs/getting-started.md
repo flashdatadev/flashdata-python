@@ -7,14 +7,14 @@
 Use Python 3.10 or newer:
 
 ```sh
-python -m pip install --upgrade https://github.com/flashdatadev/flashdata-python/releases/download/v1.2.0/flashdata-1.2.0-py3-none-any.whl
+python -m pip install --upgrade https://github.com/flashdatadev/flashdata-python/releases/download/v1.3.0/flashdata-1.3.0-py3-none-any.whl
 ```
 
-The command installs the GitHub release wheel. Once 1.2.0 is available on PyPI,
-you can also use `python -m pip install --upgrade "flashdata>=1.2.0"`.
+The command installs the GitHub release wheel. Once 1.3.0 is available on PyPI,
+you can also use `python -m pip install --upgrade "flashdata>=1.3.0"`.
 
-Version 1.2.0 adds multiple subtitle languages and per-language results. See the
-[release notes](release-notes-1.2.0.md).
+Version 1.3.0 adds temporary cloud storage credentials (`session_token`). See the
+[release notes](release-notes-1.3.0.md).
 
 ## Install from source
 

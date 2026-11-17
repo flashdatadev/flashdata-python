@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 — 2026-11-17
+
+- Support optional `session_token` credentials for S3, S3-compatible storage, OSS,
+  COS, BOS and TOS in downloads, batches and bulk storage delivery.
+- Redact session tokens from errors and diagnostics. Document temporary credentials
+  and renewal of paused bulk result-delivery credentials.
+
 ## 1.2.0 — 2026-11-05
 
 - Support single or multiple transcript/caption languages, omitted-language fallback and per-language results. Other source APIs are unchanged.

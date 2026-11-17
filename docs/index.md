@@ -43,6 +43,7 @@ architecture
 sdk-parity
 validation
 release
+release-notes-1.3.0
 release-notes-1.2.0
 release-notes-1.1.0
 ```

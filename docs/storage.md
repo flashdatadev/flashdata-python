@@ -30,6 +30,41 @@ Example private S3 configuration; replace placeholders in a protected file:
 {"storage_type":"s3","storage_url":"your-media-bucket","region":"us-east-1","access_key":"YOUR_ACCESS_KEY","secret_key":"YOUR_SECRET_KEY"}
 ```
 
+## Temporary STS credentials
+
+S3, S3-compatible providers that issue temporary credentials, OSS, COS, BOS and TOS
+accept an optional `session_token` with its matching temporary `access_key` and
+`secret_key`. AWS/BOS/TOS call it SessionToken, OSS calls it SecurityToken, and COS
+calls it Token (paired with TmpSecretId/TmpSecretKey). Azure continues to use
+`sas_token`; GCS uses `service_account`.
+
+```python
+from flashdata import FlashData
+
+storage = {
+    "storage_type": "s3",
+    "storage_url": "your-media-bucket",
+    "region": "us-east-1",
+    "access_key": "YOUR_TEMPORARY_ACCESS_KEY",
+    "secret_key": "YOUR_TEMPORARY_SECRET_KEY",
+    "session_token": "YOUR_SESSION_TOKEN",
+}
+with FlashData(api_key="your-api-key") as client:
+    receipt = client.youtube.download("dQw4w9WgXcQ", storage=storage)
+    print(receipt["id"])
+```
+
+Use the same object in `options.storage` for bulk downloads or
+`options.result_storage` for bulk data exports. Omit `session_token` for long-term
+credentials. Temporary credentials must remain valid through queueing, processing,
+uploads and retries; FlashData does not refresh them automatically.
+
+For a paused bulk data job whose input scan has finished, renew the result-storage
+credentials with `client.bulk.update(bulk_id, {"options": {"result_storage": {
+"access_key": "NEW_TEMPORARY_ACCESS_KEY", "secret_key": "NEW_TEMPORARY_SECRET_KEY",
+"session_token": "NEW_SESSION_TOKEN"}}})`, then resume the job. The destination
+stays unchanged. Do not save credential values in job checkpoints.
+
 Download supports audio/video/audio-only selection, video quality constraints, frame-rate
 constraints, source audio language, audio quality, format selection, a yt-dlp format
 selector, metadata sidecars and start/end timestamps. All parameters are documented in

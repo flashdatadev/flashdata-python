@@ -954,6 +954,7 @@ StorageConfig = TypedDict(
         "object_prefix": "str",
         "access_key": "str",
         "secret_key": "str",
+        "session_token": "str",
         "region": "str",
         "endpoint_url": "str",
         "service_account": "dict[str, str]",
